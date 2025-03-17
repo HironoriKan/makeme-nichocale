@@ -1252,76 +1252,49 @@ const CalendarTextGenerator = ({
 
   // ミニカレンダーのポップアップを描画する
   const renderMiniCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    
-    let firstDayOfWeek = firstDay.getDay();
-    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    
-    const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
-    const days = [];
-    
-    for (let i = 0; i < weeks * 7; i++) {
-      const dayNumber = i - firstDayOfWeek + 1;
-      if (dayNumber < 1 || dayNumber > daysInMonth) {
-        days.push(null);
-      } else {
-        days.push(new Date(year, month, dayNumber));
-      }
-    }
-
-    const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
-      return Array.from({ length: 7 }).some((_, dayIndex) => {
-        const day = days[weekIndex * 7 + dayIndex];
-        return day && weekDates.some(date => 
-          date.getDate() === day.getDate() &&
-          date.getMonth() === day.getMonth() &&
-          date.getFullYear() === day.getFullYear()
-        );
-      });
-    });
-
     return (
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold mb-2">カレンダー</h2>
-          <p className="text-sm text-gray-600">選択した週間カレンダーを表示します。</p>
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-30 z-50 md:hidden"
+        onClick={() => setShowMiniCalendar(false)}
+      >
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-4/5 max-w-sm bg-white shadow-xl overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">カレンダー</h3>
+              <button 
+                onClick={() => setShowMiniCalendar(false)}
+                className="text-gray-400"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex justify-between items-center mb-4">
+              <button
+                onClick={previousMonth}
+                className="p-1 text-gray-600"
+              >
+                &lt;
+              </button>
+              <div className="font-bold">
+                {popupMonth.getFullYear()}年{popupMonth.getMonth() + 1}月
+              </div>
+              <button 
+                onClick={nextMonth}
+                className="p-1 text-gray-600"
+              >
+                &gt;
+              </button>
+            </div>
+            
+            {renderMiniCalendarBody()}
+          </div>
         </div>
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={previousWeek} className="text-gray-600">&lt;</button>
-          <span className="font-bold">{`${year}年 ${month + 1}月`}</span>
-          <button onClick={nextWeek} className="text-gray-600">&gt;</button>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr>
-              {weekdays.map(day => (
-                <th key={day} className="text-center py-2 text-sm">{day}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: weeks }).map((_, weekIndex) => (
-              <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
-                {Array.from({ length: 7 }).map((_, dayIndex) => {
-                  const day = days[weekIndex * 7 + dayIndex];
-                  return (
-                    <td 
-                      key={dayIndex}
-                      className="text-center py-2 text-sm cursor-pointer"
-                      onClick={() => day && setCurrentDate(day)}
-                    >
-                      {day?.getDate() || ''}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     );
   };
@@ -1861,7 +1834,7 @@ const CalendarTextGenerator = ({
       return Array.from({ length: 7 }).some((_, dayIndex) => {
         const day = days[weekIndex * 7 + dayIndex];
         return day && weekDates.some(date => 
-          date && day && date.getDate() === day.getDate() &&
+          date.getDate() === day.getDate() &&
           date.getMonth() === day.getMonth() &&
           date.getFullYear() === day.getFullYear()
         );
@@ -1913,90 +1886,29 @@ const CalendarTextGenerator = ({
   };
 
   return (
-    <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
-      minHeight: 'calc(100vh - var(--safe-bottom, 0px))', 
-      overscrollBehavior: 'none',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
+    <div className="h-full min-h-screen bg-white">
       {/* モバイル表示（750px未満） */}
-      <div className="md:hidden h-full flex flex-col">
-        {/* インライン関数としてモバイルレイアウトをレンダリング */}
-        <div className="relative flex flex-col w-full sm:max-w-lg h-full" style={{maxWidth: '100%'}}>
-          {/* ①画面のヘッダー：高さ固定 */}
-          <div className="app-header bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
-            style={{ height: 'auto', minHeight: '48px' }}>
-            {/* 左側：アプリタイトル */}
-            <div className="text-sm sm:text-base font-bold text-gray-800">
-              メイクミー日程調整
-            </div>
-            
-            {/* 右側：ログインボタンまたはユーザー情報 */}
-            <div className="flex items-center space-x-2">
-              {/* ログイン/ユーザー情報 */}
-              {isAuthenticated ? (
-                <div className="flex items-center">
-                  {userInfo?.photos?.[0]?.url && (
-                    <img
-                      src={userInfo.photos[0].url}
-                      alt="ユーザー"
-                      className="h-7 w-7 rounded-full cursor-pointer"
-                      onClick={handleLogout}
-                      title="ログアウト"
-                    />
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={handleLogin}
-                  disabled={isLoading || !isApiInitialized}
-                  className="flex items-center justify-center rounded-full bg-red-400 text-white w-8 h-8 focus:outline-none"
-                  title="Googleでログイン"
-                >
-                  {isLoading ? (
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" fill="#ffffff"/>
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {/* ②ナビゲーションバー：高さ固定 */}
-          <div className="nav-header bg-white p-2 sm:p-3 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
-            {/* 左端：月表示と選択ボタン */}
-            <div className="flex items-center relative w-1/3 justify-start">
-              <button 
-                onClick={() => {
-                  setShowCalendarPopup(!showCalendarPopup);
-                  setPopupMonth(new Date(currentDate));
-                }}
-                className="flex items-center p-1 rounded"
+      <div className="md:hidden flex flex-col min-h-screen">
+        {/* モバイルレイアウト */}
+        <div className="flex flex-col h-full">
+          {/* ①ヘッダー：高さ固定 */}
+          <div className="header-area flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-200" style={{ height: '48px' }}>
+            {/* 左端：ミニカレンダーアイコン */}
+            <div className="flex items-center w-1/3">
+              <button
+                onClick={() => setShowMiniCalendar(!showMiniCalendar)}
+                className="flex items-center"
               >
-                <span className="text-sm sm:text-base font-bold">
-                  {weekDates.length > 0 ? `${weekDates[0].getMonth() + 1}月` : ''}
-                </span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4 ml-1">
+                <span className="text-xl font-bold">3月</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
-              {renderCalendarPopup()}
             </div>
             
-            {/* 中央：ナビゲーションボタン */}
-            <div className="flex items-center justify-center w-1/3">
-              <div className="flex items-center space-x-1 sm:space-x-3">
-                <button onClick={previousWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&lt;</button>
-                <button onClick={goToToday} className="px-3 py-1 text-gray-600 text-sm font-bold rounded-full whitespace-nowrap min-w-[60px]">今日</button>
-                <button onClick={nextWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&gt;</button>
-              </div>
+            {/* 中央：タイトル */}
+            <div className="flex-grow flex justify-center text-lg font-bold">
+              メイクミー日程調整
             </div>
             
             {/* 右端：設定アイコン */}
@@ -2015,11 +1927,137 @@ const CalendarTextGenerator = ({
               )}
             </div>
 
-            {/* 設定ポップアップ */}
-            {renderSettingsPopup()}
+            {/* 設定ポップアップ - モバイル版では右側から表示 */}
+            {showSettingsPopup && isAuthenticated && 
+              <div
+                className="fixed inset-0 bg-black bg-opacity-30 z-50 md:hidden"
+                onClick={() => setShowSettingsPopup(false)}
+              >
+                <div 
+                  className="absolute right-0 top-0 bottom-0 w-4/5 max-w-sm bg-white shadow-xl overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium">カレンダー設定</h3>
+                      <button 
+                        onClick={() => setShowSettingsPopup(false)}
+                        className="text-gray-400"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <hr className="my-3" />
+                    
+                    <div className="mb-4">
+                      <h4 className="text-md text-gray-700 mb-2">表示するカレンダーを選択</h4>
+                      
+                      <div className="ml-auto mb-2">
+                        <button
+                          className="text-sm bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const allCalendars = calendars.map(cal => cal.id);
+                            const updatedCalendars = [];
+                            toggleCalendarSelection(allCalendars, updatedCalendars);
+                          }}
+                        >
+                          すべて解除
+                        </button>
+                      </div>
+                      
+                      {calendars.map(calendar => (
+                        <div key={calendar.id} className="flex items-center my-2">
+                          <input
+                            type="checkbox"
+                            id={`calendar-mobile-${calendar.id}`}
+                            checked={calendar.selected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleCalendarSelection([calendar.id], e.target.checked ? [calendar.id] : []);
+                            }}
+                            className="w-5 h-5 mr-2"
+                          />
+                          <label
+                            htmlFor={`calendar-mobile-${calendar.id}`}
+                            className="flex items-center cursor-pointer flex-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span
+                              className="w-4 h-4 inline-block rounded-full mr-2"
+                              style={{ backgroundColor: calendar.color }}
+                            ></span>
+                            {calendar.summary || calendar.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <hr className="my-3" />
+                    
+                    <div className="mb-4">
+                      <h4 className="text-md text-gray-700 mb-2">予定の表示設定</h4>
+                      
+                      <div className="flex items-center my-2">
+                        <input
+                          type="checkbox"
+                          id="setting-all-day-mobile"
+                          checked={!calendarSettings.allowAllDayEvents}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            updateCalendarSettings({
+                              ...calendarSettings,
+                              allowAllDayEvents: !e.target.checked
+                            });
+                          }}
+                          className="w-5 h-5 mr-2"
+                        />
+                        <label 
+                          htmlFor="setting-all-day-mobile" 
+                          className="cursor-pointer flex-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          終日予定がある日を表示しない
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center my-2">
+                        <input
+                          type="checkbox"
+                          id="setting-tentative-mobile"
+                          checked={!calendarSettings.allowTentativeEvents}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            updateCalendarSettings({
+                              ...calendarSettings,
+                              allowTentativeEvents: !e.target.checked
+                            });
+                          }}
+                          className="w-5 h-5 mr-2"
+                        />
+                        <label 
+                          htmlFor="setting-tentative-mobile" 
+                          className="cursor-pointer flex-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          未回答/未定の予定がある時間を表示しない
+                        </label>
+                      </div>
+                      
+                      <p className="text-sm text-gray-500 mt-4">
+                        チェックを入れると、その予定がある時間も選択できるようになります。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
           </div>
           
-          {/* ③カレンダーの日付と曜日のヘッダー：高さ固定 */}
+          {/* ②カレンダーの日付と曜日のヘッダー：高さ固定 */}
           <div className="calendar-header flex-shrink-0" style={{ height: 'auto', minHeight: '50px' }}>
             <table className="w-full border-collapse table-fixed" style={{ margin: '2px 0' }}>
               <thead>
@@ -2048,7 +2086,7 @@ const CalendarTextGenerator = ({
             </table>
           </div>
           
-          {/* ④カレンダーグリッド（内部スクロール、8:00-17:00までを表示し、それ以降はスクロールで見れる） */}
+          {/* ③カレンダーグリッド（内部スクロール、8:00-17:00までを表示し、それ以降はスクロールで見れる） */}
           <div className="calendar-grid overflow-auto" style={{ 
             height: 'var(--grid-container-height, 340px)',
             maxHeight: 'var(--grid-container-height, 340px)',
@@ -2134,7 +2172,7 @@ const CalendarTextGenerator = ({
             </div>
           </div>
           
-          {/* ⑤テキスト反映エリア（内部スクロール） */}
+          {/* ④テキスト反映エリア（内部スクロール） */}
           <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '110px' }}>
             <div className="bg-white h-full overflow-auto">
               <div
@@ -2181,7 +2219,7 @@ const CalendarTextGenerator = ({
             </div>
           </div>
           
-          {/* ⑥CTAボタン：高さ固定 */}
+          {/* ⑤CTAボタン：高さ固定 */}
           <div className="button-area flex-shrink-0 flex justify-center py-2 sm:py-3 bg-white" style={{ height: '60px' }}>
             <div className="flex space-x-4 sm:space-x-6">
               <button 
@@ -2201,7 +2239,7 @@ const CalendarTextGenerator = ({
             </div>
           </div>
           
-          {/* ⑦下部スペース */}
+          {/* ⑥下部スペース */}
           <div className="footer-space flex-shrink-0 h-[20px]"></div>
         </div>
       </div>
