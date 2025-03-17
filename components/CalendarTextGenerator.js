@@ -2138,14 +2138,15 @@ const CalendarTextGenerator = ({
                         return (
                           <td 
                             key={dayIndex} 
-                            className="relative p-0 border-white select-none cursor-pointer"
+                            className="relative p-0 select-none cursor-pointer"
                             style={{ 
                               height: 'var(--cell-height, 24px)',
                               width: 'var(--cell-width, 24px)',
                               padding: '2px',
                               minWidth: 'var(--cell-width, 24px)',
                               maxWidth: 'var(--cell-width, 24px)',
-                              boxSizing: 'border-box'
+                              boxSizing: 'border-box',
+                              border: '2px solid #ffffff'
                             }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
