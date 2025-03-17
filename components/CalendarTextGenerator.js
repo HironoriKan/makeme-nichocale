@@ -1023,65 +1023,65 @@ const CalendarTextGenerator = ({
 
   // イベントセルをレンダリング
   const renderEventCell = (event, isOccupied, isSelected) => {
-    // イベントの種類に応じたスタイルを設定
-    let opacity = 0.7;
-    let textColor = 'text-white'; // 常に白色に固定
-    let hintText = '';
-    let showTitle = true;
-    let showEvent = true;
+    // イベント関連の表示スタイル設定
+    const baseStyle = {
+      width: '100%',
+      height: isMobileDevice() ? '100%' : '32px',
+      padding: '1px',
+      borderRadius: '4px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    };
     
-    if (event) {
-      // 終日予定
+    const eventColor = isOccupied ? getEventColor(event) : '#FEE2E2';
+    const selectedColor = '#FDA4AF';
+    const defaultColor = '#FEE2E2';
+    
+    // 選択状態によるスタイル変更
+    const selectedStyle = isSelected ? {
+      backgroundColor: isOccupied ? eventColor : selectedColor,
+      border: '3px solid #F43F5E',
+      boxShadow: '0 0 0 1px rgba(244, 63, 94, 0.5)',
+      position: 'relative',
+      zIndex: 1
+    } : {
+      backgroundColor: isOccupied ? eventColor : defaultColor,
+      border: '1px solid transparent'
+    };
+    
+    // イベントの種類による透明度調整
+    let opacity = 1;
+    if (isOccupied) {
       if (event.isAllDay) {
         opacity = 0.6;
-        hintText = '終日';
-        
-        // 終日予定で選択可能な場合は予定を完全に表示しない（空きスロットとして扱う）
-        if (calendarSettings.allowAllDayEvents) {
-          showEvent = false;
-        }
-      }
-      
-      // 未回答予定
-      if (event.isTentative) {
+      } else if (event.isTentative) {
         opacity = 0.5;
-        hintText = '未定';
-        
-        // 未回答予定で選択可能な場合は予定を完全に表示しない（空きスロットとして扱う）
-        if (calendarSettings.allowTentativeEvents) {
-          showEvent = false;
-        }
+      } else {
+        opacity = 0.7;
       }
     }
     
-    // 予定を表示しない場合は、空きスロットと同じ表示にする
-    if (!showEvent) {
-      return (
-        <div className={`w-9 h-9 sm:w-11 sm:h-11 aspect-square rounded-md flex items-center justify-center ${
-          isSelected ? 'bg-red-300 ring-2 ring-red-500' : 'bg-red-100'
-        }`}>
-        </div>
-      );
+    // ヒントテキスト（終日/未定など）
+    let hintText = '';
+    if (isOccupied) {
+      if (event.isAllDay) {
+        hintText = '終日';
+      } else if (event.isTentative) {
+        hintText = '未定';
+      }
     }
     
-    // 選択状態に応じたスタイルを適用
-    const selectedStyle = isSelected 
-      ? { 
-          boxShadow: 'inset 0 0 0 2px rgba(244, 63, 94, 0.8)'
-        } 
-      : {};
+    // テキスト色の設定
+    const textColor = 'text-white';
+    const showTitle = true;
     
     return (
-      <div 
-        className={`w-9 h-9 sm:w-11 sm:h-11 aspect-square rounded-md flex items-center justify-center ${
-          isOccupied ? 'bg-gray-200' :
-          isSelected ? 'bg-red-300' : 'bg-red-100'
-        }`} 
-        style={{ 
-          backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-          opacity: isOccupied ? opacity : 1,
-          position: 'relative',
-          ...selectedStyle
+      <div
+        style={{
+          ...baseStyle,
+          ...selectedStyle,
+          opacity
         }}
       >
         {isOccupied && showTitle && (
@@ -1351,7 +1351,11 @@ const CalendarTextGenerator = ({
                           }`}
                           style={{ 
                             backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-                            opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1
+                            opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1,
+                            // 選択状態のセルに目立つ外枠を追加
+                            border: isSelected ? '3px solid #F43F5E' : '1px solid #F9FAFB',
+                            boxShadow: isSelected ? '0 0 0 1px rgba(244, 63, 94, 0.5)' : 'none',
+                            zIndex: isSelected ? 1 : 0
                           }}
                         >
                           {isOccupied && (
@@ -1655,7 +1659,11 @@ const CalendarTextGenerator = ({
                                 }`}
                                 style={{ 
                                   backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-                                  opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1
+                                  opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1,
+                                  // 選択状態のセルに目立つ外枠を追加
+                                  border: isSelected ? '3px solid #F43F5E' : '1px solid #F9FAFB',
+                                  boxShadow: isSelected ? '0 0 0 1px rgba(244, 63, 94, 0.5)' : 'none',
+                                  zIndex: isSelected ? 1 : 0
                                 }}
                               >
                                 {isOccupied && (
