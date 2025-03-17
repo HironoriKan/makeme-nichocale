@@ -1133,21 +1133,20 @@ const CalendarTextGenerator = ({
     const cellStyle = {
       backgroundColor: bgColor,
       opacity: opacity,
-      // 選択状態の場合、予定の有無に関わらず明確な枠線を表示
-      // 外側のボーダーを4pxから2pxに変更
+      // 外側のボーダーを2pxに変更
       boxShadow: isSelected ? '0 0 0 2px #E11D48' : 'none',
       // 枠線のコントラストを高める
       border: isSelected ? '1px solid #ffffff' : 'none',
-      width: '100%',
-      height: '100%',
-      borderRadius: '4px',
+      width: '90%',
+      height: '90%',
+      borderRadius: '8px',
       position: 'relative',
       zIndex: isSelected ? 2 : 1,
     };
     
     return (
       <div 
-        className="w-full h-full rounded-md flex items-center justify-center overflow-hidden"
+        className="rounded-lg flex items-center justify-center overflow-hidden"
         style={cellStyle}
       >
         {isOccupied && (
@@ -2056,7 +2055,7 @@ const CalendarTextGenerator = ({
                         return (
                           <td 
                             key={dayIndex} 
-                            className="relative p-0 border-l-[2px] border-r-[2px] border-white select-none cursor-pointer"
+                            className="relative p-1 select-none cursor-pointer"
                             style={{ height: 'var(--cell-height, 24px)' }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
