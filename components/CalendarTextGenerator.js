@@ -993,7 +993,7 @@ const CalendarTextGenerator = ({
       const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
       const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
       const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 70;
+      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 100; // テキストエリアの高さを増加
       const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
       const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
       
@@ -1003,8 +1003,8 @@ const CalendarTextGenerator = ({
       // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
-      // グリッドの高さを設定（全体の60%程度）
-      const gridHeight = Math.max(200, availableHeight * 0.6); // 縦幅を2倍に変更（0.3→0.6）
+      // グリッドの高さを設定（全体の30%程度に縮小、17:00までが表示されるようにする）
+      const gridHeight = Math.max(200, availableHeight * 0.3); // 60%から30%に変更
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
       
       // コンソールに高さ情報を出力（デバッグ用）
@@ -1236,10 +1236,10 @@ const CalendarTextGenerator = ({
           </table>
         </div>
         
-        {/* ④カレンダーグリッド（内部スクロール）：端末によって高さ調整 */}
+        {/* ④カレンダーグリッド（内部スクロール）：17:00までが見えるように高さ調整 */}
         <div className="calendar-grid flex-1 overflow-auto" style={{ 
-          height: 'var(--grid-height, 300px)', // フォールバック値を300pxに設定
-          maxHeight: '60vh' // 最大高さも制限
+          height: 'var(--grid-height, 250px)', // フォールバック値を調整
+          maxHeight: '35vh' // 最大高さを調整（60vhから35vhに）
         }}>
           <div className="relative">
             {/* Current time indicator */}
@@ -1248,23 +1248,22 @@ const CalendarTextGenerator = ({
                 <div 
                   className="absolute z-10 pointer-events-none" 
                   style={{ 
-                    top: `${currentTimePosition - 5}px`, 
-                    left: '42px',
-                    width: '0',
-                    height: '0',
-                    borderTop: '5px solid transparent',
-                    borderBottom: '5px solid transparent',
-                    borderLeft: '8px solid rgba(255, 0, 0, 0.6)'
+                    top: `${currentTimePosition}px`, 
+                    left: 0, 
+                    right: 0, 
+                    height: '1px', 
+                    backgroundColor: '#E11D48' 
                   }}
                 />
                 <div 
-                  className="absolute z-10 pointer-events-none" 
+                  className="absolute z-10 pointer-events-none"
                   style={{ 
-                    top: `${currentTimePosition}px`, 
-                    height: '0.5px', 
-                    backgroundColor: 'rgba(255, 0, 0, 0.6)',
-                    left: '50px',
-                    right: '0'
+                    top: `${currentTimePosition - 5}px`, 
+                    left: '32px',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: '#E11D48' 
                   }}
                 />
               </>
@@ -1311,11 +1310,11 @@ const CalendarTextGenerator = ({
           </div>
         </div>
         
-        {/* ⑤テキスト反映エリア（内部スクロール）：高さ固定 */}
-        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200" style={{ height: '70px' }}>
+        {/* ⑤テキスト反映エリア（内部スクロール）：高さを大きくする */}
+        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200" style={{ height: '100px' }}> {/* 70pxから100pxに変更 */}
           <div className="bg-white h-full overflow-auto">
             <div
-              className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[60px]"
+              className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[90px]" {/* 最小高さも調整 */}
               ref={textAreaRef}
               contentEditable={typeof window !== 'undefined' && !isMobileDevice()}
               onFocus={() => setIsTextAreaFocused(true)}
@@ -1956,10 +1955,10 @@ const CalendarTextGenerator = ({
             </table>
           </div>
           
-          {/* ④カレンダーグリッド（内部スクロール）：端末によって高さ調整 */}
+          {/* ④カレンダーグリッド（内部スクロール）：17:00までが見えるように高さ調整 */}
           <div className="calendar-grid flex-1 overflow-auto" style={{ 
-            height: 'var(--grid-height, 300px)', // フォールバック値を300pxに設定
-            maxHeight: '60vh' // 最大高さも制限
+            height: 'var(--grid-height, 250px)', // フォールバック値を調整
+            maxHeight: '35vh' // 最大高さを調整（60vhから35vhに）
           }}>
             <div className="relative">
               {/* Current time indicator */}
@@ -1968,23 +1967,22 @@ const CalendarTextGenerator = ({
                   <div 
                     className="absolute z-10 pointer-events-none" 
                     style={{ 
-                      top: `${currentTimePosition - 5}px`, 
-                      left: '42px',
-                      width: '0',
-                      height: '0',
-                      borderTop: '5px solid transparent',
-                      borderBottom: '5px solid transparent',
-                      borderLeft: '8px solid rgba(255, 0, 0, 0.6)'
+                      top: `${currentTimePosition}px`, 
+                      left: 0, 
+                      right: 0, 
+                      height: '1px', 
+                      backgroundColor: '#E11D48' 
                     }}
                   />
                   <div 
-                    className="absolute z-10 pointer-events-none" 
+                    className="absolute z-10 pointer-events-none"
                     style={{ 
-                      top: `${currentTimePosition}px`, 
-                      height: '0.5px', 
-                      backgroundColor: 'rgba(255, 0, 0, 0.6)',
-                      left: '50px',
-                      right: '0'
+                      top: `${currentTimePosition - 5}px`, 
+                      left: '32px',
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      backgroundColor: '#E11D48' 
                     }}
                   />
                 </>
@@ -2031,11 +2029,11 @@ const CalendarTextGenerator = ({
             </div>
           </div>
           
-          {/* ⑤テキスト反映エリア（内部スクロール）：高さ固定 */}
-          <div className="text-area flex-shrink-0 bg-white border-t border-gray-200" style={{ height: '70px' }}>
+          {/* ⑤テキスト反映エリア（内部スクロール）：高さを大きくする */}
+          <div className="text-area flex-shrink-0 bg-white border-t border-gray-200" style={{ height: '100px' }}> {/* 70pxから100pxに変更 */}
             <div className="bg-white h-full overflow-auto">
               <div
-                className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[60px]"
+                className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[90px]" {/* 最小高さも調整 */}
                 ref={textAreaRef}
                 contentEditable={typeof window !== 'undefined' && !isMobileDevice()}
                 onFocus={() => setIsTextAreaFocused(true)}
