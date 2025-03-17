@@ -42,6 +42,9 @@ const CalendarTextGenerator = ({
   const [isDragToDeselect, setIsDragToDeselect] = useState(false);
   const [dragStartCell, setDragStartCell] = useState({ dayIndex: -1, timeIndex: -1 });
   const [lastDraggedCell, setLastDraggedCell] = useState({ dayIndex: -1, timeIndex: -1 });
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [isLongPress, setIsLongPress] = useState(false);
+  const [dragOperation, setDragOperation] = useState(null);
 
   // Custom hook for viewport height
   const useViewportHeight = () => {
@@ -240,19 +243,60 @@ const CalendarTextGenerator = ({
   };
 
   // Touch event handlers
+  const handleCellTouchStart = (dayIndex, timeIndex, e) => {
+    // 長押しによる複数選択のためのタイマーを設定
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+    }
+    
+    const timer = setTimeout(() => {
+      // 長押し検出
+      const date = weekDates[dayIndex];
+      if (!date) return;
+      
+      const dateTimeKey = getDateTimeKey(date, timeIndex);
+      const isSelected = selectedDates.includes(dateTimeKey);
+      
+      setIsDragging(true);
+      setIsDragToDeselect(isSelected);
+      // lastSelectedDay/Timeが使用されている場合は、dragStartCellを使用するように修正
+      setDragStartCell({ dayIndex, timeIndex });
+      setLastDraggedCell({ dayIndex, timeIndex });
+      setIsLongPress(true);
+      
+      // 視覚的フィードバック（振動など）
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50); // 50msの振動フィードバック
+      }
+      
+      // 長押しの場合は選択状態を反転
+      handleCellClick(dayIndex, timeIndex);
+    }, 500); // 500msの長押しで複数選択モードに入る
+    
+    setLongPressTimer(timer);
+  };
+
   const handleTouchMove = (e) => {
     if (!isLongPress) return; // 長押し後のみドラッグ選択を許可
     
     if (isDragging && typeof document !== 'undefined') {
-      e.preventDefault(); // スクロールを防止
-      
-      const touch = e.touches[0];
-      const element = document.elementFromPoint(touch.clientX, touch.clientY);
-      
-      if (element && element.dataset.dayIndex !== undefined && element.dataset.timeIndex !== undefined) {
-        const dayIndex = parseInt(element.dataset.dayIndex);
-        const timeIndex = parseInt(element.dataset.timeIndex);
-        handleCellMouseEnter(dayIndex, timeIndex);
+      try {
+        e.preventDefault(); // スクロールを防止
+        
+        if (e.touches && e.touches.length > 0) {
+          const touch = e.touches[0];
+          const element = document.elementFromPoint(touch.clientX, touch.clientY);
+          
+          if (element && element.dataset && 
+              element.dataset.dayIndex !== undefined && 
+              element.dataset.timeIndex !== undefined) {
+            const dayIndex = parseInt(element.dataset.dayIndex);
+            const timeIndex = parseInt(element.dataset.timeIndex);
+            handleCellMouseEnter(dayIndex, timeIndex);
+          }
+        }
+      } catch (error) {
+        console.error('タッチ移動処理中にエラーが発生しました:', error);
       }
     }
   };
@@ -265,7 +309,6 @@ const CalendarTextGenerator = ({
     
     if (isDragging) {
       setIsDragging(false);
-      setDragOperation(null);
       
       setTimeout(() => {
         setIsLongPress(false);
@@ -273,13 +316,31 @@ const CalendarTextGenerator = ({
     }
   };
 
+  // グローバルなタッチイベント処理を追加
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    
+    // 長押し中のスクロールを防止
+    const preventScroll = (e) => {
+      if (isLongPress && isDragging) {
+        e.preventDefault();
+      }
+    };
+    
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchmove', preventScroll);
+    };
+  }, [isLongPress, isDragging]);
+
   // Text generation
   const generateText = (dates = selectedDates) => {
     let text = '';
     const dateGroups = new Map();
     
-    dates.forEach((_, key) => {
-      const date = new Date(key);
+    dates.forEach((dateTimeKey) => {
+      const date = new Date(dateTimeKey);
       const dateKey = date.toDateString();
       const hour = date.getHours();
       
@@ -327,6 +388,7 @@ const CalendarTextGenerator = ({
     });
     
     setGeneratedText(text.trim());
+    return text.trim();
   };
 
   // Effect for text generation
@@ -336,7 +398,7 @@ const CalendarTextGenerator = ({
 
   // Utility functions
   const resetSelection = () => {
-    setSelectedDates(new Map());
+    setSelectedDates([]);
     setGeneratedText('');
   };
 
@@ -548,7 +610,7 @@ const CalendarTextGenerator = ({
       
       for (let timeIndex = 0; timeIndex < 14; timeIndex++) {
         const key = getDateTimeKey(date, timeIndex);
-        if (selectedDates.has(key)) {
+        if (selectedDates.includes(key)) {
           slots[dayIndex][timeIndex] = true;
         }
       }
@@ -723,14 +785,38 @@ const CalendarTextGenerator = ({
   useEffect(() => {
     if (typeof document === 'undefined') return;
     
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchend', handleTouchEnd);
+    // マウスアップでドラッグ操作を終了する
+    const handleDocumentMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        console.log('Drag ended - selections:', selectedDates.length);
+      }
+    };
+    
+    // タッチ終了時の処理（ローカル関数として定義）
+    const handleDocumentTouchEnd = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        setLongPressTimer(null);
+      }
+      
+      if (isDragging) {
+        setIsDragging(false);
+        
+        setTimeout(() => {
+          setIsLongPress(false);
+        }, 50);
+      }
+    };
+    
+    document.addEventListener('mouseup', handleDocumentMouseUp);
+    document.addEventListener('touchend', handleDocumentTouchEnd);
     
     return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('mouseup', handleDocumentMouseUp);
+      document.removeEventListener('touchend', handleDocumentTouchEnd);
     };
-  }, [isDragging, longPressTimer]);
+  }, [isDragging, selectedDates.length, longPressTimer]);
 
   // Touch event handler for document
   useEffect(() => {
@@ -996,54 +1082,58 @@ const CalendarTextGenerator = ({
     }
   };
 
-  // useEffect for viewport height - 適切なグリッド高さ計算
+  // ビューポートの高さを計算して調整する
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     
-    const setVH = () => {
-      // セーフエリアの設定
-      const safeBottom = window.innerHeight - document.documentElement.clientHeight;
-      if (safeBottom > 0) {
-        document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
-      } else {
-        document.documentElement.style.setProperty('--safe-bottom', '0px');
+    // ビューポート高さと要素の高さを設定する関数
+    const adjustHeights = () => {
+      try {
+        // iPhoneのセーフエリア対応
+        const safeBottom = window.innerHeight - document.documentElement.clientHeight;
+        document.documentElement.style.setProperty('--safe-bottom', `${safeBottom > 0 ? safeBottom : 0}px`);
+        
+        // ビューポートの高さを設定
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        // 固定高さの合計を計算（DOM参照を避けて固定値を使用）
+        const headerHeight = 48;         // ヘッダー
+        const navHeight = 48;            // ナビゲーションバー
+        const calendarHeaderHeight = 50; // カレンダーヘッダー
+        const textAreaHeight = 110;      // テキストエリア
+        const buttonAreaHeight = 60;     // ボタンエリア
+        const footerHeight = 20;         // 下部スペース
+        
+        // 合計固定高さ
+        const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
+        
+        // 利用可能な高さからグリッドの高さを計算
+        const availableHeight = window.innerHeight - fixedHeight;
+        const gridHeight = Math.max(300, Math.min(availableHeight, 340));
+        
+        // グリッドの高さをCSSカスタムプロパティに設定
+        document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
+      } catch (error) {
+        console.error('Error adjusting heights:', error);
       }
-      
-      // 各セクションの高さを設定（DOM要素の代わりに固定値を使用して安定性を向上）
-      const headerHeight = 48; // ヘッダーの固定高さ
-      const navHeight = 48; // ナビゲーションバーの固定高さ
-      const calendarHeaderHeight = 50; // カレンダーヘッダーの固定高さ
-      const textAreaHeight = 110; // テキストエリアの固定高さ
-      const buttonAreaHeight = 60; // ボタンエリアの固定高さ
-      const footerHeight = 20; // 下部スペースの固定高さ
-      
-      // 固定要素の合計高さ
-      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
-      
-      // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
-      const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
-      
-      // グリッドの高さを設定（全体の最適な高さを確保）
-      const gridHeight = Math.max(280, Math.min(availableHeight, 340));
-      document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
     };
-
-    // 初期設定
-    setVH();
-
-    // リサイズイベントでも更新
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(setVH, 100);
-    });
-
+    
+    // 初期化時に高さを調整
+    adjustHeights();
+    
+    // イベントリスナーを設定
+    window.addEventListener('resize', adjustHeights);
+    window.addEventListener('orientationchange', () => setTimeout(adjustHeights, 100));
+    
+    // クリーンアップ
     return () => {
-      window.removeEventListener('resize', setVH);
-      window.removeEventListener('orientationchange', setVH);
+      window.removeEventListener('resize', adjustHeights);
+      window.removeEventListener('orientationchange', () => setTimeout(adjustHeights, 100));
     };
   }, []);
 
-  // ミニカレンダーをレンダリング
+  // ミニカレンダーのポップアップを描画する
   const renderMiniCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -1396,514 +1486,6 @@ const CalendarTextGenerator = ({
     );
   };
 
-  // useEffect for viewport height - 適切なグリッド高さ計算
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    
-    const setVH = () => {
-      // セーフエリアの設定
-      const safeBottom = window.innerHeight - document.documentElement.clientHeight;
-      if (safeBottom > 0) {
-        document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
-      } else {
-        document.documentElement.style.setProperty('--safe-bottom', '0px');
-      }
-      
-      // 各セクションの高さを計算
-      // 固定高さの要素を取得
-      const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
-      const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
-      const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 100; // テキストエリアの高さを増加
-      const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
-      const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
-      
-      // 固定要素の合計高さ
-      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
-      
-      // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
-      const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
-      
-      // グリッドの高さを設定（全体の30%程度に縮小、17:00までが表示されるようにする）
-      const gridHeight = Math.max(200, availableHeight * 0.3); // 60%から30%に変更
-      document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
-      
-      // コンソールに高さ情報を出力（デバッグ用）
-      console.log('Grid height calculation:', {
-        windowHeight: window.innerHeight,
-        fixedHeight,
-        availableHeight,
-        gridHeight
-      });
-    };
-
-    // 初期設定
-    setVH();
-
-    // リサイズイベントでも更新
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(setVH, 100);
-    });
-    window.addEventListener('scroll', () => {
-      setTimeout(setVH, 100);
-    });
-
-    return () => {
-      window.removeEventListener('resize', setVH);
-      window.removeEventListener('orientationchange', setVH);
-      window.removeEventListener('scroll', setVH);
-    };
-  }, []);
-
-  // モバイル向けタッチ操作の改善
-  const handleCellTouchStart = (dayIndex, timeIndex, e) => {
-    // 長押しによる複数選択のためのタイマーを設定
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-    }
-    
-    const timer = setTimeout(() => {
-      // 長押し検出
-      const date = weekDates[dayIndex];
-      if (!date) return;
-      
-      const dateTimeKey = getDateTimeKey(date, timeIndex);
-      const isSelected = selectedDates.includes(dateTimeKey);
-      
-      setIsDragging(true);
-      setIsDragToDeselect(isSelected);
-      setLastSelectedDay(dayIndex);
-      setLastSelectedTime(timeIndex);
-      setIsLongPress(true);
-      
-      // 視覚的フィードバック（振動など）
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(50); // 50msの振動フィードバック
-      }
-      
-      // 長押しの場合は選択状態を反転
-      handleCellClick(dayIndex, timeIndex);
-    }, 500); // 500msの長押しで複数選択モードに入る
-    
-    setLongPressTimer(timer);
-  };
-
-  // グローバルなタッチイベント処理を追加
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    
-    // 長押し中のスクロールを防止
-    const preventScroll = (e) => {
-      if (isLongPress && isDragging) {
-        e.preventDefault();
-      }
-    };
-    
-    document.addEventListener('touchmove', preventScroll, { passive: false });
-    
-    return () => {
-      document.removeEventListener('touchmove', preventScroll);
-    };
-  }, [isLongPress, isDragging]);
-
-  // ドラッグ操作のために文書全体でマウスイベントを管理
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    
-    const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        console.log('Drag ended - selections:', selectedDates.length);
-      }
-    };
-    
-    // グローバルなマウスアップイベントをリッスン
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    
-    return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [isDragging, selectedDates.length]);
-
-  // useEffect for viewport height - 適切なグリッド高さ計算
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    
-    const setVH = () => {
-      // セーフエリアの設定
-      const safeBottom = window.innerHeight - document.documentElement.clientHeight;
-      if (safeBottom > 0) {
-        document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
-      } else {
-        document.documentElement.style.setProperty('--safe-bottom', '0px');
-      }
-      
-      // 各セクションの高さを計算
-      // 固定高さの要素を取得
-      const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
-      const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
-      const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = 110; // テキストエリアの高さを縮小
-      const buttonAreaHeight = 60; // ボタンエリアの固定高さ
-      
-      // 固定要素の合計高さ
-      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight;
-      
-      // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
-      const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
-      
-      // グリッドの高さを設定（8:00〜17:00程度が表示される高さ = 9時間分）
-      // 各セルの高さを約37px（1時間あたり）と仮定すると、9時間で約333px
-      // 安全マージンを含めて340px程度に設定
-      const gridHeight = Math.max(300, Math.min(availableHeight, 340));
-      document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
-    };
-
-    // 初期設定
-    setVH();
-
-    // リサイズイベントでも更新
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(setVH, 100);
-    });
-
-    return () => {
-      window.removeEventListener('resize', setVH);
-      window.removeEventListener('orientationchange', setVH);
-    };
-  }, []);
-
-  // デスクトップ用のレイアウト
-  const renderDesktopLayout = () => {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4 overflow-hidden">
-        <div className="max-w-[1500px] mx-auto">
-          {/* ヘッダー */}
-          <div className="mb-4 flex justify-between items-center">
-            <h1 className="text-2xl font-bold">メイクミー日程調整</h1>
-            
-            {/* 右側：ログインボタンまたはユーザー情報 */}
-            <div className="flex items-center space-x-3">
-              {isAuthenticated ? (
-                <div className="flex items-center">
-                  {userInfo?.photos?.[0]?.url && (
-                    <img
-                      src={userInfo.photos[0].url}
-                      alt="ユーザー"
-                      className="h-9 w-9 rounded-full cursor-pointer"
-                      onClick={handleLogout}
-                      title="ログアウト"
-                    />
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={handleLogin}
-                  disabled={isLoading || !isApiInitialized}
-                  className="flex items-center justify-center rounded-full bg-red-400 text-white w-10 h-10 focus:outline-none"
-                  title="Googleでログイン"
-                >
-                  {isLoading ? (
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" fill="#ffffff"/>
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {/* メインコンテンツ */}
-          <div className="flex flex-row gap-4 overflow-hidden" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
-            {/* 左側：カレンダーグリッド */}
-            <div className="bg-white rounded-lg shadow-sm p-4 overflow-hidden" style={{ width: 'calc(67% - 8px)', minWidth: '600px', maxWidth: '1000px' }}>
-              {/* ナビゲーションと日付表示 - 左寄せに変更 */}
-              <div className="flex justify-between items-center mb-4">
-                <div className="text-xl font-bold">
-                  {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <button onClick={previousWeek} className="text-gray-600 text-lg">&lt;</button>
-                  <button onClick={goToToday} className="px-4 py-1 text-sm bg-gray-100 rounded">
-                    今日
-                  </button>
-                  <button onClick={nextWeek} className="text-gray-600 text-lg">&gt;</button>
-                  
-                  {/* 設定アイコン */}
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                      className="flex items-center justify-center text-gray-600"
-                      title="カレンダー設定"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 設定ポップアップ */}
-              {showSettingsPopup && isAuthenticated && (
-                <div 
-                  ref={settingsPopupRef}
-                  className="absolute right-8 top-36 bg-white shadow-lg rounded-lg z-50 p-3"
-                  style={{ 
-                    width: '280px',
-                    border: '1px solid #ddd',
-                    maxHeight: '540px',
-                    overflowY: 'auto'
-                  }}
-                >
-                  {/* 設定ポップアップの内容は既存のままで問題なし */}
-                  <div className="font-bold mb-2 pb-2 border-b border-gray-200">カレンダー設定</div>
-                  
-                  <div className="text-sm text-gray-700 mb-2">表示するカレンダーを選択</div>
-                  
-                  {/* カレンダー選択の操作ボタン */}
-                  <div className="flex justify-end mb-2">
-                    <button
-                      onClick={() => {
-                        calendars.forEach(calendar => {
-                          if (calendar.selected) {
-                            toggleCalendarSelection(calendar.id);
-                          }
-                        });
-                      }}
-                      className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
-                    >
-                      すべて解除
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {calendars.map(calendar => (
-                      <div key={calendar.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`calendar-desktop-${calendar.id}`}
-                          checked={calendar.selected}
-                          onChange={() => toggleCalendarSelection(calendar.id)}
-                          className="mr-2"
-                        />
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: calendar.color }}
-                        ></div>
-                        <label 
-                          htmlFor={`calendar-desktop-${calendar.id}`}
-                          className="text-sm text-gray-800 truncate"
-                          style={{ maxWidth: '200px' }}
-                        >
-                          {calendar.name}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {calendars.length <= 1 && (
-                    <div className="text-xs text-gray-500 mt-2 mb-4">
-                      共有カレンダーがありません。Google カレンダーで他の人のカレンダーを追加すると、ここに表示されます。
-                    </div>
-                  )}
-
-                  {/* 終日予定や未回答予定の設定 */}
-                  <div className="mt-4 border-t border-gray-200 pt-3">
-                    <div className="font-bold text-sm mb-2">予定の表示設定</div>
-                    
-                    {/* 終日予定の設定 */}
-                    <div className="flex items-center my-3">
-                      <input
-                        type="checkbox"
-                        id="allow-all-day-events-desktop"
-                        checked={calendarSettings.allowAllDayEvents}
-                        onChange={(e) => updateCalendarSettings('allowAllDayEvents', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <label htmlFor="allow-all-day-events-desktop" className="text-sm text-gray-800">
-                        終日予定がある日を表示しない
-                      </label>
-                    </div>
-                    
-                    {/* 未回答予定の設定 */}
-                    <div className="flex items-center my-3">
-                      <input
-                        type="checkbox"
-                        id="allow-tentative-events-desktop"
-                        checked={calendarSettings.allowTentativeEvents}
-                        onChange={(e) => updateCalendarSettings('allowTentativeEvents', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <label htmlFor="allow-tentative-events-desktop" className="text-sm text-gray-800">
-                        未回答/未定の予定がある時間を表示しない
-                      </label>
-                    </div>
-                    
-                    <div className="text-xs text-gray-500 mt-1">
-                      チェックを入れると、その予定がある時間も選択できるようになります。
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* カレンダーのグリッド - スクロール機能強化 */}
-              <div className="overflow-y-auto h-[calc(100%-80px)]" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 250px)' }}>
-                <table className="w-full border-collapse table-fixed select-none">
-                  <thead className="sticky top-0 bg-white z-10">
-                    <tr>
-                      <th className="w-[60px]"></th>
-                      {weekdays.map((weekday, index) => {
-                        const date = weekDates[index];
-                        const isToday = date && 
-                          date.getDate() === today.getDate() && 
-                          date.getMonth() === today.getMonth() && 
-                          date.getFullYear() === today.getFullYear();
-                        
-                        return (
-                          <th key={index} className="p-2 text-center border-b select-none" style={{ width: `calc((100% - 60px) / 7)` }}>
-                            <div className="text-sm text-gray-500 select-none">{weekday}</div>
-                            <div className={`text-lg font-bold select-none ${isToday ? 'bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
-                              {date ? date.getDate() : ''}
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeSlots.map((time, timeIndex) => (
-                      <tr key={timeIndex}>
-                        <td className="p-2 text-sm text-gray-500 text-right w-[60px] select-none">
-                          {time}
-                        </td>
-                        {weekdays.map((_, dayIndex) => {
-                          const date = weekDates[dayIndex];
-                          const event = date && getEventForTimeSlot(date, timeIndex + 8);
-                          const isOccupied = !!event;
-                          const isSelected = getSelectedSlots()[dayIndex][timeIndex];
-                          
-                          return (
-                            <td
-                              key={dayIndex}
-                              className="p-1 cursor-pointer select-none"
-                              onClick={(e) => {
-                                // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
-                                if (!isDragging) {
-                                  handleCellClick(dayIndex, timeIndex);
-                                }
-                              }}
-                              onMouseDown={(e) => handleCellMouseDown(dayIndex, timeIndex, e)}
-                              onMouseEnter={() => handleCellMouseEnter(dayIndex, timeIndex)}
-                              style={{ width: `calc((100% - 60px) / 7)` }}
-                            >
-                              <div 
-                                className={`h-16 rounded flex items-center justify-center select-none ${
-                                  isOccupied ? 'bg-gray-200' :
-                                  isSelected ? 'bg-red-300' : 'bg-red-50'
-                                }`}
-                                style={{ 
-                                  backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-                                  opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1
-                                }}
-                              >
-                                {isOccupied && (
-                                  <div className="text-xs text-white p-1 overflow-hidden text-center leading-none select-none">
-                                    {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
-                                    {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
-                                    <span className="select-none">{formatEventTitle(event)}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* 右側：ミニカレンダーと日程候補 */}
-            <div style={{ width: 'calc(33% - 8px)', minWidth: '300px', maxWidth: '500px' }} className="flex flex-col gap-4 overflow-hidden">
-              {/* 右上：ミニカレンダー */}
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <button onClick={previousMonth} className="text-gray-600 hover:bg-gray-100 w-8 h-8 flex items-center justify-center rounded-full">&lt;</button>
-                  <span className="font-bold text-lg">{`${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月`}</span>
-                  <button onClick={nextMonth} className="text-gray-600 hover:bg-gray-100 w-8 h-8 flex items-center justify-center rounded-full">&gt;</button>
-                </div>
-                
-                <table className="w-full table-fixed">
-                  <thead>
-                    <tr>
-                      {weekdays.map(day => (
-                        <th key={day} className="text-center py-2 text-xs font-medium w-[14.28%]">{day}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {renderMiniCalendarBody()}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* 右下：日程候補の出力 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm flex-1 overflow-hidden">
-                <h2 className="text-lg font-bold mb-2">日程候補の作成</h2>
-                <p className="text-sm text-gray-600 mb-4">カレンダーで選んだ日時を出力します。</p>
-                <div 
-                  className="bg-gray-50 p-3 rounded min-h-[100px] mb-4 text-sm whitespace-pre-wrap overflow-auto"
-                  style={{ height: '200px' }}
-                  ref={textAreaRef}
-                  contentEditable={true}
-                  onFocus={() => setIsTextAreaFocused(true)}
-                  onBlur={() => setIsTextAreaFocused(false)}
-                  onInput={handleTextAreaChange}
-                >
-                  {generatedText ? (
-                    generatedText.split('\n').map((line, index) => (
-                      <div key={index} className="text-sm">{line}</div>
-                    ))
-                  ) : (
-                    <div className="text-gray-400">
-                      カレンダーで選択した日時が、自動で入力されます。
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <button
-                    onClick={copyToClipboard}
-                    disabled={!generatedText}
-                    className="w-full py-2 bg-red-400 text-white rounded-full font-bold disabled:opacity-50"
-                  >
-                    文字をコピーする
-                  </button>
-                  <button
-                    onClick={resetSelection}
-                    className="w-full py-2 bg-gray-200 text-gray-700 rounded-full font-bold"
-                  >
-                    リセット
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // ミニカレンダーの本体部分をレンダリングする関数
   const renderMiniCalendarBody = () => {
     if (!currentDate) return null;
@@ -2008,21 +1590,20 @@ const CalendarTextGenerator = ({
     const handleDragStart = () => document.body.classList.add('dragging');
     const handleDragEnd = () => {
       document.body.classList.remove('dragging');
-      handleMouseUp(); // ドラッグ終了時にマウスアップハンドラーを実行
+      // handleMouseUpは削除（グローバルイベントリスナーで処理するため）
     };
 
     // グローバルイベントリスナーを設定（ドラッグ操作のための基本設定）
     window.addEventListener('mousedown', handleDragStart);
     window.addEventListener('mouseup', handleDragEnd);
     
-    // デスクトップの場合、ドキュメント外でマウスを離した場合のフォールバック
-    document.addEventListener('mouseleave', handleMouseUp);
+    // デスクトップの場合、ドキュメント外でマウスを離した場合のフォールバック処理はグローバルイベントリスナーに統合
 
     return () => {
       document.head.removeChild(style);
       window.removeEventListener('mousedown', handleDragStart);
       window.removeEventListener('mouseup', handleDragEnd);
-      document.removeEventListener('mouseleave', handleMouseUp);
+      // document.removeEventListener('mouseleave', handleMouseUp); - 不要なため削除
     };
   }, []);
 
