@@ -735,119 +735,110 @@ const CalendarTextGenerator = ({
 
   // Calendar popup rendering
   const renderCalendarPopup = () => {
-    if (!showCalendarPopup) return null;
-    
-    const firstDayOfMonth = new Date(popupMonth.getFullYear(), popupMonth.getMonth(), 1);
-    const lastDayOfMonth = new Date(popupMonth.getFullYear(), popupMonth.getMonth() + 1, 0);
-    let firstDayOfWeek = firstDayOfMonth.getDay();
-    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    const daysInMonth = lastDayOfMonth.getDate();
-    const lastDayOfPrevMonth = new Date(popupMonth.getFullYear(), popupMonth.getMonth(), 0);
-    const daysInPrevMonth = lastDayOfPrevMonth.getDate();
-    const rows = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
-    const weekdaysForPopup = ['月', '火', '水', '木', '金', '土', '日'];
-    
     return (
-      <div 
-        ref={popupRef}
-        className="absolute top-10 left-0 bg-white shadow-lg rounded-lg z-50 p-2"
-        style={{ 
-          width: '300px',
-          border: '1px solid #CB8585'
-        }}
-      >
-        <div className="flex justify-between items-center mb-2">
-          <button 
-            onClick={() => {
-              const newMonth = new Date(popupMonth);
-              newMonth.setMonth(popupMonth.getMonth() - 1);
-              setPopupMonth(newMonth);
-            }}
-            className="p-1"
-          >
-            &lt;
-          </button>
-          <div className="font-bold">
-            {popupMonth.getFullYear()}年{popupMonth.getMonth() + 1}月
+      <div className="absolute top-full right-0 bg-white w-full max-w-md rounded-lg shadow-xl z-50 mt-2 border p-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">カレンダー設定</h3>
+        <hr className="my-3" />
+        
+        <div className="mb-4">
+          <h4 className="text-md text-gray-700 mb-2">表示するカレンダーを選択</h4>
+          
+          <div className="ml-auto">
+            <button
+              className="text-sm bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md"
+              onClick={(e) => {
+                e.stopPropagation();
+                const allCalendars = calendars.map(cal => cal.id);
+                const updatedCalendars = [];
+                toggleCalendarSelection(allCalendars, updatedCalendars);
+              }}
+            >
+              すべて解除
+            </button>
           </div>
-          <button 
-            onClick={() => {
-              const newMonth = new Date(popupMonth);
-              newMonth.setMonth(popupMonth.getMonth() + 1);
-              setPopupMonth(newMonth);
-            }}
-            className="p-1"
-          >
-            &gt;
-          </button>
+          
+          {calendars.map(calendar => (
+            <div key={calendar.id} className="flex items-center my-2">
+              <input
+                type="checkbox"
+                id={`calendar-${calendar.id}`}
+                checked={calendar.selected}
+                onChange={(e) => {
+                  e.stopPropagation(); // イベントの伝播を止めてポップアップが閉じないようにする
+                  toggleCalendarSelection([calendar.id], e.target.checked ? [calendar.id] : []);
+                }}
+                className="w-5 h-5 mr-2"
+              />
+              <label
+                htmlFor={`calendar-${calendar.id}`}
+                className="flex items-center cursor-pointer flex-1"
+                onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+              >
+                <span
+                  className="w-4 h-4 inline-block rounded-full mr-2"
+                  style={{ backgroundColor: calendar.color }}
+                ></span>
+                {calendar.summary}
+              </label>
+            </div>
+          ))}
         </div>
         
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              {weekdaysForPopup.map((day, index) => (
-                <th key={index} className="text-center text-xs p-1">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: rows }).map((_, rowIndex) => (
-              <tr key={rowIndex}>
-                {Array.from({ length: 7 }).map((_, colIndex) => {
-                  const dayNumber = rowIndex * 7 + colIndex - firstDayOfWeek + 1;
-                  const isCurrentMonth = dayNumber > 0 && dayNumber <= daysInMonth;
-                  const prevMonthDay = daysInPrevMonth - firstDayOfWeek + colIndex + 1;
-                  const nextMonthDay = dayNumber - daysInMonth;
-                  const displayDay = isCurrentMonth 
-                    ? dayNumber 
-                    : (dayNumber <= 0 ? prevMonthDay : nextMonthDay);
-                  
-                  let dateObj;
-                  if (isCurrentMonth) {
-                    dateObj = new Date(popupMonth.getFullYear(), popupMonth.getMonth(), dayNumber);
-                  } else if (dayNumber <= 0) {
-                    dateObj = new Date(popupMonth.getFullYear(), popupMonth.getMonth() - 1, prevMonthDay);
-                  } else {
-                    dateObj = new Date(popupMonth.getFullYear(), popupMonth.getMonth() + 1, nextMonthDay);
-                  }
-                  
-                  const isToday = dateObj.getDate() === today.getDate() && 
-                                dateObj.getMonth() === today.getMonth() && 
-                                dateObj.getFullYear() === today.getFullYear();
-                  
-                  const isInSelectedWeek = weekDates.some(date => 
-                    date && date.getDate() === dateObj.getDate() && 
-                    date.getMonth() === dateObj.getMonth() && 
-                    date.getFullYear() === dateObj.getFullYear()
-                  );
-                  
-                  return (
-                    <td 
-                      key={colIndex} 
-                      className={`text-center p-1 cursor-pointer ${
-                        isCurrentMonth ? '' : 'text-gray-400'
-                      } ${
-                        isInSelectedWeek ? 'bg-red-100' : ''
-                      }`}
-                      onClick={() => {
-                        setCurrentDate(dateObj);
-                        setShowCalendarPopup(false);
-                      }}
-                    >
-                      <div className={`flex items-center justify-center w-6 h-6 mx-auto ${
-                        isToday ? 'bg-red-400 text-white rounded-full' : ''
-                      }`}>
-                        {displayDay}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <hr className="my-3" />
+        
+        <div className="mb-4">
+          <h4 className="text-md text-gray-700 mb-2">予定の表示設定</h4>
+          
+          <div className="flex items-center my-2">
+            <input
+              type="checkbox"
+              id="setting-all-day"
+              checked={!calendarSettings.allowAllDayEvents}
+              onChange={(e) => {
+                e.stopPropagation(); // イベントの伝播を止めてポップアップが閉じないようにする
+                updateCalendarSettings({
+                  ...calendarSettings,
+                  allowAllDayEvents: !e.target.checked
+                });
+              }}
+              className="w-5 h-5 mr-2"
+            />
+            <label 
+              htmlFor="setting-all-day" 
+              className="cursor-pointer flex-1"
+              onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+            >
+              終日予定がある日を表示しない
+            </label>
+          </div>
+          
+          <div className="flex items-center my-2">
+            <input
+              type="checkbox"
+              id="setting-tentative"
+              checked={!calendarSettings.allowTentativeEvents}
+              onChange={(e) => {
+                e.stopPropagation(); // イベントの伝播を止めてポップアップが閉じないようにする
+                updateCalendarSettings({
+                  ...calendarSettings,
+                  allowTentativeEvents: !e.target.checked
+                });
+              }}
+              className="w-5 h-5 mr-2"
+            />
+            <label 
+              htmlFor="setting-tentative" 
+              className="cursor-pointer flex-1"
+              onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+            >
+              未回答/未定の予定がある時間を表示しない
+            </label>
+          </div>
+          
+          <p className="text-sm text-gray-500 mt-4">
+            チェックを入れると、その予定がある時間も選択できるようになります。
+          </p>
+        </div>
       </div>
     );
   };
@@ -1001,6 +992,7 @@ const CalendarTextGenerator = ({
           maxHeight: '540px',
           overflowY: 'auto'
         }}
+        onClick={(e) => e.stopPropagation()} // ポップアップ全体のクリックでも伝播を止める
       >
         <div className="font-bold mb-2 pb-2 border-b border-gray-200">カレンダー設定</div>
         
@@ -1009,7 +1001,8 @@ const CalendarTextGenerator = ({
         {/* カレンダー選択の操作ボタン */}
         <div className="flex justify-end mb-2">
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation(); // イベントの伝播を止める
               calendars.forEach(calendar => {
                 if (calendar.selected) {
                   toggleCalendarSelection(calendar.id);
@@ -1027,9 +1020,12 @@ const CalendarTextGenerator = ({
             <div key={calendar.id} className="flex items-center">
               <input
                 type="checkbox"
-                id={`calendar-${calendar.id}`}
+                id={`calendar-desktop-${calendar.id}`}
                 checked={calendar.selected}
-                onChange={() => toggleCalendarSelection(calendar.id)}
+                onChange={(e) => {
+                  e.stopPropagation(); // イベントの伝播を止める
+                  toggleCalendarSelection(calendar.id);
+                }}
                 className="mr-2"
               />
               <div 
@@ -1037,9 +1033,10 @@ const CalendarTextGenerator = ({
                 style={{ backgroundColor: calendar.color }}
               ></div>
               <label 
-                htmlFor={`calendar-${calendar.id}`}
+                htmlFor={`calendar-desktop-${calendar.id}`}
                 className="text-sm text-gray-800 truncate"
                 style={{ maxWidth: '200px' }}
+                onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
               >
                 {calendar.name}
               </label>
@@ -1061,12 +1058,19 @@ const CalendarTextGenerator = ({
           <div className="flex items-center my-3">
             <input
               type="checkbox"
-              id="allow-all-day-events"
+              id="allow-all-day-events-desktop"
               checked={calendarSettings.allowAllDayEvents}
-              onChange={(e) => updateCalendarSettings('allowAllDayEvents', e.target.checked)}
+              onChange={(e) => {
+                e.stopPropagation(); // イベントの伝播を止める
+                updateCalendarSettings('allowAllDayEvents', e.target.checked);
+              }}
               className="mr-2"
             />
-            <label htmlFor="allow-all-day-events" className="text-sm text-gray-800">
+            <label 
+              htmlFor="allow-all-day-events-desktop" 
+              className="text-sm text-gray-800"
+              onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+            >
               終日予定がある日を表示しない
             </label>
           </div>
@@ -1075,12 +1079,19 @@ const CalendarTextGenerator = ({
           <div className="flex items-center my-3">
             <input
               type="checkbox"
-              id="allow-tentative-events"
+              id="allow-tentative-events-desktop"
               checked={calendarSettings.allowTentativeEvents}
-              onChange={(e) => updateCalendarSettings('allowTentativeEvents', e.target.checked)}
+              onChange={(e) => {
+                e.stopPropagation(); // イベントの伝播を止める
+                updateCalendarSettings('allowTentativeEvents', e.target.checked);
+              }}
               className="mr-2"
             />
-            <label htmlFor="allow-tentative-events" className="text-sm text-gray-800">
+            <label 
+              htmlFor="allow-tentative-events-desktop" 
+              className="text-sm text-gray-800"
+              onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+            >
               未回答/未定の予定がある時間を表示しない
             </label>
           </div>
@@ -1126,17 +1137,19 @@ const CalendarTextGenerator = ({
 
   // イベントセルをレンダリング
   const renderEventCell = (event, isOccupied, isSelected) => {
-    let bgColor = isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2');
-    let opacity = isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1;
+    // 予定のイベントカラーを取得
+    const eventColor = isOccupied ? getEventColor(event) : '#E11D48';
     
     // スタイリングを適用
     const cellStyle = {
-      backgroundColor: bgColor,
-      opacity: opacity,
-      // 選択状態の場合、予定の有無に関わらず明確な枠線を表示
-      boxShadow: isSelected ? '0 0 0 2px #E11D48' : 'none',
-      // 枠線のコントラストを高める
-      border: isSelected ? '1px solid #ffffff' : 'none',
+      // 予定がある場合は背景色を白に、ない場合は薄いピンク、選択されている場合は薄い赤に
+      backgroundColor: isOccupied ? '#FFFFFF' : (isSelected ? '#FDA4AF' : '#FEE2E2'),
+      // 予定がある場合は不透明度を1に、それ以外は以前の設定を維持
+      opacity: isOccupied ? 1 : (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 1),
+      // 選択状態の場合は赤い枠線、予定がある場合はカレンダーカラーの枠線、それ以外は枠線なし
+      boxShadow: isSelected ? '0 0 0 2px #E11D48' : (isOccupied ? `0 0 0 2px ${eventColor}` : 'none'),
+      // 予定がある場合は明確なボーダーを表示
+      border: isOccupied ? `1px solid ${eventColor}` : (isSelected ? '1px solid #ffffff' : 'none'),
       width: '94%',
       height: '94%',
       borderRadius: '8px',
@@ -1144,13 +1157,16 @@ const CalendarTextGenerator = ({
       zIndex: isSelected ? 2 : 1,
     };
     
+    // 文字色のスタイル（予定がある場合はカレンダーカラー、それ以外は白）
+    const textColor = isOccupied ? { color: eventColor } : { color: '#ffffff' };
+    
     return (
       <div 
         className="w-full h-full rounded-lg flex items-center justify-center overflow-hidden"
         style={cellStyle}
       >
         {isOccupied && (
-          <div className="text-xs text-white p-1 overflow-hidden text-center leading-none select-none">
+          <div className="text-xs p-1 overflow-hidden text-center leading-none select-none" style={textColor}>
             {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
             {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
             <span className="select-none">{formatEventTitle(event)}</span>
@@ -1581,7 +1597,8 @@ const CalendarTextGenerator = ({
                   {/* カレンダー選択の操作ボタン */}
                   <div className="flex justify-end mb-2">
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation(); // イベントの伝播を止める
                         calendars.forEach(calendar => {
                           if (calendar.selected) {
                             toggleCalendarSelection(calendar.id);
@@ -1601,7 +1618,10 @@ const CalendarTextGenerator = ({
                           type="checkbox"
                           id={`calendar-desktop-${calendar.id}`}
                           checked={calendar.selected}
-                          onChange={() => toggleCalendarSelection(calendar.id)}
+                          onChange={(e) => {
+                            e.stopPropagation(); // イベントの伝播を止める
+                            toggleCalendarSelection(calendar.id);
+                          }}
                           className="mr-2"
                         />
                         <div 
@@ -1612,6 +1632,7 @@ const CalendarTextGenerator = ({
                           htmlFor={`calendar-desktop-${calendar.id}`}
                           className="text-sm text-gray-800 truncate"
                           style={{ maxWidth: '200px' }}
+                          onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
                         >
                           {calendar.name}
                         </label>
@@ -1635,10 +1656,17 @@ const CalendarTextGenerator = ({
                         type="checkbox"
                         id="allow-all-day-events-desktop"
                         checked={calendarSettings.allowAllDayEvents}
-                        onChange={(e) => updateCalendarSettings('allowAllDayEvents', e.target.checked)}
+                        onChange={(e) => {
+                          e.stopPropagation(); // イベントの伝播を止める
+                          updateCalendarSettings('allowAllDayEvents', e.target.checked);
+                        }}
                         className="mr-2"
                       />
-                      <label htmlFor="allow-all-day-events-desktop" className="text-sm text-gray-800">
+                      <label 
+                        htmlFor="allow-all-day-events-desktop" 
+                        className="text-sm text-gray-800"
+                        onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+                      >
                         終日予定がある日を表示しない
                       </label>
                     </div>
@@ -1649,10 +1677,17 @@ const CalendarTextGenerator = ({
                         type="checkbox"
                         id="allow-tentative-events-desktop"
                         checked={calendarSettings.allowTentativeEvents}
-                        onChange={(e) => updateCalendarSettings('allowTentativeEvents', e.target.checked)}
+                        onChange={(e) => {
+                          e.stopPropagation(); // イベントの伝播を止める
+                          updateCalendarSettings('allowTentativeEvents', e.target.checked);
+                        }}
                         className="mr-2"
                       />
-                      <label htmlFor="allow-tentative-events-desktop" className="text-sm text-gray-800">
+                      <label 
+                        htmlFor="allow-tentative-events-desktop" 
+                        className="text-sm text-gray-800"
+                        onClick={(e) => e.stopPropagation()} // ラベルクリック時もイベント伝播を止める
+                      >
                         未回答/未定の予定がある時間を表示しない
                       </label>
                     </div>
