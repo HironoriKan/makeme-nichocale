@@ -42,9 +42,10 @@ const CalendarTextGenerator = ({
   const [isDragToDeselect, setIsDragToDeselect] = useState(false);
   const [dragStartCell, setDragStartCell] = useState({ dayIndex: -1, timeIndex: -1 });
   const [lastDraggedCell, setLastDraggedCell] = useState({ dayIndex: -1, timeIndex: -1 });
-  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [mouseDownTimer, setMouseDownTimer] = useState(null);
   const [isLongPress, setIsLongPress] = useState(false);
   const [dragOperation, setDragOperation] = useState(null);
+  const [longPressTimer, setLongPressTimer] = useState(null);
 
   // Custom hook for viewport height
   const useViewportHeight = () => {
@@ -151,8 +152,8 @@ const CalendarTextGenerator = ({
 
   // Cell interaction handlers
   const handleCellClick = (dayIndex, timeIndex) => {
-    // ドラッグ終了直後はクリックイベントを無視する（ドラッグの終了として扱う）
-    if (isDragging) {
+    // ドラッグ終了直後または長押し中はクリックイベントを無視する
+    if (isDragging || isLongPress) {
       return;
     }
     
@@ -180,41 +181,58 @@ const CalendarTextGenerator = ({
   };
 
   const handleCellMouseDown = (dayIndex, timeIndex, e) => {
-    // 既に選択されているかどうかを確認
+    // デフォルトの選択動作を防止
+    e.preventDefault();
+    if (window.getSelection) {
+      window.getSelection().removeAllRanges();
+    }
+    
     const date = weekDates[dayIndex];
     if (!date) return;
     
+    // 既存のタイマーがあればクリア
+    if (mouseDownTimer) {
+      clearTimeout(mouseDownTimer);
+    }
+    
+    // 開始セルと選択状態を記録
     const dateTimeKey = getDateTimeKey(date, timeIndex);
     const isSelected = selectedDates.includes(dateTimeKey);
     
-    // ドラッグ開始状態を設定
-    setIsDragging(true);
-    setIsDragToDeselect(isSelected);
-    setDragStartCell({ dayIndex, timeIndex });
-    setLastDraggedCell({ dayIndex, timeIndex });
-    
-    // 重要: ドラッグ開始時に最初のセルを選択/選択解除する
-    const newSelection = [...selectedDates];
-    const existingIndex = newSelection.findIndex(item => item === dateTimeKey);
-    
-    // ドラッグモードに基づいて選択/選択解除する
-    if (isSelected) {
-      // 選択解除モード
-      if (existingIndex !== -1) {
-        newSelection.splice(existingIndex, 1);
+    // 長押し判定用のタイマーを設定（500ms）
+    const timer = setTimeout(() => {
+      // 長押し検出時の処理
+      setIsDragging(true);
+      setIsDragToDeselect(isSelected);
+      setDragStartCell({ dayIndex, timeIndex });
+      setLastDraggedCell({ dayIndex, timeIndex });
+      setIsLongPress(true);
+      
+      // 長押し開始時に最初のセルを選択/選択解除する
+      const newSelection = [...selectedDates];
+      const existingIndex = newSelection.findIndex(item => item === dateTimeKey);
+      
+      // ドラッグモードに基づいて選択/選択解除する
+      if (isSelected) {
+        // 選択解除モード
+        if (existingIndex !== -1) {
+          newSelection.splice(existingIndex, 1);
+        }
+      } else {
+        // 選択モード
+        if (existingIndex === -1) {
+          newSelection.push(dateTimeKey);
+        }
       }
-    } else {
-      // 選択モード
-      if (existingIndex === -1) {
-        newSelection.push(dateTimeKey);
-      }
-    }
+      
+      // 選択状態を更新
+      setSelectedDates(newSelection);
+      setGeneratedText(generateText(newSelection));
+      
+      console.log('Long press detected (desktop):', { dayIndex, timeIndex });
+    }, 500); // 500msの長押しで複数選択モードに入る
     
-    // 選択状態を更新
-    setSelectedDates(newSelection);
-    setGeneratedText(generateText(newSelection));
-    
-    console.log('Drag started', { dayIndex, timeIndex, isSelected });
+    setMouseDownTimer(timer);
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
@@ -274,13 +292,25 @@ const CalendarTextGenerator = ({
     console.log('Drag over cell', { minDayIndex, maxDayIndex, minTimeIndex, maxTimeIndex, selectedCount: newSelection.length });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (dayIndex, timeIndex) => {
+    // タイマーをクリア
+    if (mouseDownTimer) {
+      clearTimeout(mouseDownTimer);
+      setMouseDownTimer(null);
+    }
+    
+    // 長押しではなく、ドラッグもしていない場合は通常のクリック処理
+    if (!isLongPress && !isDragging) {
+      handleCellClick(dayIndex, timeIndex);
+    }
+    
+    // ドラッグ操作の終了
     if (isDragging) {
       setIsDragging(false);
-      // テキスト生成を確定
-      generateText(selectedDates);
-      console.log('Drag ended');
     }
+    
+    // 長押し状態をリセット
+    setIsLongPress(false);
   };
 
   // Touch event handlers
@@ -346,12 +376,14 @@ const CalendarTextGenerator = ({
     }
     
     // 長押しフラグがセットされていない場合は、通常のタップとして処理
-    if (!isLongPress) {
+    if (!isLongPress && !isDragging) {
       handleCellClick(dayIndex, timeIndex);
     }
     
     // 長押し状態をリセット
-    setIsLongPress(false);
+    setTimeout(() => {
+      setIsLongPress(false);
+    }, 50);
   };
 
   // タッチムーブイベント - ドラッグ選択用
@@ -869,10 +901,18 @@ const CalendarTextGenerator = ({
     
     // マウスアップでドラッグ操作を終了する
     const handleDocumentMouseUp = () => {
+      if (mouseDownTimer) {
+        clearTimeout(mouseDownTimer);
+        setMouseDownTimer(null);
+      }
+      
       if (isDragging) {
         setIsDragging(false);
         console.log('Drag ended - selections:', selectedDates.length);
       }
+      
+      // 長押し状態をリセット
+      setIsLongPress(false);
     };
     
     // タッチ終了時の処理（ローカル関数として定義）
@@ -898,7 +938,7 @@ const CalendarTextGenerator = ({
       document.removeEventListener('mouseup', handleDocumentMouseUp);
       document.removeEventListener('touchend', handleDocumentTouchEnd);
     };
-  }, [isDragging, selectedDates.length, longPressTimer]);
+  }, [isDragging, selectedDates.length, longPressTimer, mouseDownTimer]);
 
   // Touch event handler for document
   useEffect(() => {
@@ -1363,8 +1403,9 @@ const CalendarTextGenerator = ({
                         onTouchMove={handleTouchMove}
                         onTouchEnd={() => handleCellTouchEnd(dayIndex, timeIndex)}
                         onClick={(e) => {
-                          // タッチ操作の場合はhandleCellTouchEndに任せる
-                          if (e.nativeEvent.pointerType !== 'touch') {
+                          // タッチデバイスの場合はhandleCellTouchEndに任せる
+                          if (e.nativeEvent && e.nativeEvent.pointerType !== 'touch') {
+                            // マウスクリックの場合のみ処理
                             handleCellClick(dayIndex, timeIndex);
                           }
                         }}
@@ -1648,13 +1689,11 @@ const CalendarTextGenerator = ({
                             <td
                               key={dayIndex}
                               className="p-1 cursor-pointer select-none"
-                              onClick={(e) => {
-                                // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
-                                if (!isDragging) {
-                                  handleCellClick(dayIndex, timeIndex);
-                                }
+                              onClick={() => {
+                                // クリックイベントはhandleMouseUpで処理するため、ここでは何もしない
                               }}
                               onMouseDown={(e) => handleCellMouseDown(dayIndex, timeIndex, e)}
+                              onMouseUp={() => handleMouseUp(dayIndex, timeIndex)}
                               onMouseEnter={() => handleCellMouseEnter(dayIndex, timeIndex)}
                               style={{ width: `calc((100% - 60px) / 7)` }}
                               data-day-index={dayIndex}
