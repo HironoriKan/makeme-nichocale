@@ -1196,10 +1196,22 @@ const CalendarTextGenerator = ({
         
         // 利用可能な高さからグリッドの高さを計算
         const availableHeight = window.innerHeight - fixedHeight;
-        const gridHeight = Math.max(300, Math.min(availableHeight, 340));
+        
+        // 画面幅からグリッドの幅を計算（左右のマージンを考慮）
+        const screenWidth = window.innerWidth;
+        const timeColumnWidth = 40; // 時間列の幅
+        const availableWidth = screenWidth - timeColumnWidth;
+        const cellWidth = availableWidth / 7; // 7日分で割る
+        
+        // グリッドの高さを幅に合わせて1:1に設定
+        const gridHeight = Math.min(availableHeight, cellWidth * 14); // 14時間分
         
         // グリッドの高さをCSSカスタムプロパティに設定
         document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
+        
+        // セルの高さを設定（グリッドの高さを14時間分で割る）
+        const cellHeight = gridHeight / 14;
+        document.documentElement.style.setProperty('--cell-height', `${cellHeight}px`);
       } catch (error) {
         console.error('Error adjusting heights:', error);
       }
@@ -2045,6 +2057,7 @@ const CalendarTextGenerator = ({
                           <td 
                             key={dayIndex} 
                             className="relative p-0 border-l-[2px] border-r-[2px] border-white select-none cursor-pointer"
+                            style={{ height: 'var(--cell-height, 24px)' }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
                               if (!isDragging) {
@@ -2060,7 +2073,7 @@ const CalendarTextGenerator = ({
                             data-day-index={dayIndex}
                             data-time-index={timeIndex}
                           >
-                            <div className="flex justify-center py-0.5">
+                            <div className="flex justify-center items-center h-full">
                               {renderEventCell(event, isOccupied, isSelected)}
                             </div>
                           </td>
