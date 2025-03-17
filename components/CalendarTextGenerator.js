@@ -1134,15 +1134,15 @@ const CalendarTextGenerator = ({
       backgroundColor: bgColor,
       opacity: opacity,
       // 選択状態の場合、予定の有無に関わらず明確な枠線を表示
-      // 内側ではなく外側のボーダーに変更（insetを削除）
-      boxShadow: isSelected ? '0 0 0 4px #E11D48' : 'none',
-      // 内側に白いボーダーを追加してコントラストを高める
+      // 外側のボーダーを4pxから2pxに変更
+      boxShadow: isSelected ? '0 0 0 2px #E11D48' : 'none',
+      // 枠線のコントラストを高める
       border: isSelected ? '1px solid #ffffff' : 'none',
       width: '100%',
       height: '100%',
       borderRadius: '4px',
-      position: 'relative', // 外側のボーダーをセルの上に適切に表示するため
-      zIndex: isSelected ? 2 : 1, // 選択されたセルを前面に表示
+      position: 'relative',
+      zIndex: isSelected ? 2 : 1,
     };
     
     return (
