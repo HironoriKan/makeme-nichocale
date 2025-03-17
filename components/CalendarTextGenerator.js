@@ -164,28 +164,23 @@ const CalendarTextGenerator = ({
   };
 
   const handleCellMouseDown = (dayIndex, timeIndex) => {
+    // ドラッグ操作開始時にテキスト選択を防止
+    window.getSelection().removeAllRanges();
+    
     const date = weekDates[dayIndex];
     if (!date) return;
-
-    // 予定の有無に関わらず選択可能にする (isTimeSlotOccupiedのチェックを削除)
-    const timer = setTimeout(() => {
-      const key = getDateTimeKey(date, timeIndex);
-      const newSelectedDates = new Map(selectedDates);
-      const newValue = !selectedDates.has(key);
-      
-      if (newValue) {
-        newSelectedDates.set(key, true);
-      } else {
-        newSelectedDates.delete(key);
-      }
-      
-      setSelectedDates(newSelectedDates);
-      setIsDragging(true);
-      setDragOperation(newValue);
-      setIsLongPress(true);
-    }, 500);
     
-    setLongPressTimer(timer);
+    // 既存のコード...
+    const dateTimeKey = getDateTimeKey(date, timeIndex);
+    const isSelected = selectedDates.includes(dateTimeKey);
+    
+    setIsDragging(true);
+    setIsDragToDeselect(isSelected);
+    setLastSelectedDay(dayIndex);
+    setLastSelectedTime(timeIndex);
+    
+    // セルクリック時の選択/解除処理
+    handleCellClick(dayIndex, timeIndex);
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
@@ -1294,7 +1289,10 @@ const CalendarTextGenerator = ({
                           key={dayIndex} 
                           className="relative p-0 border-l-[2px] border-r-[2px] border-white select-none cursor-pointer"
                           onClick={() => handleCellClick(dayIndex, timeIndex)}
-                          onMouseDown={() => handleCellMouseDown(dayIndex, timeIndex)}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // テキスト選択を防止
+                            handleCellMouseDown(dayIndex, timeIndex);
+                          }}
                           onMouseEnter={() => isDragging && handleCellMouseEnter(dayIndex, timeIndex)}
                           onTouchStart={() => handleCellMouseDown(dayIndex, timeIndex)}
                           data-day-index={dayIndex}
@@ -1566,7 +1564,7 @@ const CalendarTextGenerator = ({
 
               {/* カレンダーのグリッド - スクロール機能強化 */}
               <div className="overflow-y-auto h-[calc(100%-80px)]" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 250px)' }}>
-                <table className="w-full border-collapse table-fixed">
+                <table className="w-full border-collapse table-fixed select-none">
                   <thead className="sticky top-0 bg-white z-10">
                     <tr>
                       <th className="w-[60px]"></th>
@@ -1578,9 +1576,9 @@ const CalendarTextGenerator = ({
                           date.getFullYear() === today.getFullYear();
                         
                         return (
-                          <th key={index} className="p-2 text-center border-b" style={{ width: `calc((100% - 60px) / 7)` }}>
-                            <div className="text-sm text-gray-500">{weekday}</div>
-                            <div className={`text-lg font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                          <th key={index} className="p-2 text-center border-b select-none" style={{ width: `calc((100% - 60px) / 7)` }}>
+                            <div className="text-sm text-gray-500 select-none">{weekday}</div>
+                            <div className={`text-lg font-bold select-none ${isToday ? 'bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
                               {date ? date.getDate() : ''}
                             </div>
                           </th>
@@ -1591,7 +1589,7 @@ const CalendarTextGenerator = ({
                   <tbody>
                     {timeSlots.map((time, timeIndex) => (
                       <tr key={timeIndex}>
-                        <td className="p-2 text-sm text-gray-500 text-right w-[60px]">
+                        <td className="p-2 text-sm text-gray-500 text-right w-[60px] select-none">
                           {time}
                         </td>
                         {weekdays.map((_, dayIndex) => {
@@ -1603,14 +1601,17 @@ const CalendarTextGenerator = ({
                           return (
                             <td
                               key={dayIndex}
-                              className="p-1 cursor-pointer"
+                              className="p-1 cursor-pointer select-none"
                               onClick={() => handleCellClick(dayIndex, timeIndex)}
-                              onMouseDown={() => handleCellMouseDown(dayIndex, timeIndex)}
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // テキスト選択を防止
+                                handleCellMouseDown(dayIndex, timeIndex);
+                              }}
                               onMouseEnter={() => handleCellMouseEnter(dayIndex, timeIndex)}
                               style={{ width: `calc((100% - 60px) / 7)` }}
                             >
                               <div 
-                                className={`h-16 rounded flex items-center justify-center ${
+                                className={`h-16 rounded flex items-center justify-center select-none ${
                                   isOccupied ? 'bg-gray-200' :
                                   isSelected ? 'bg-red-300' : 'bg-red-50'
                                 }`}
@@ -1620,10 +1621,10 @@ const CalendarTextGenerator = ({
                                 }}
                               >
                                 {isOccupied && (
-                                  <div className="text-xs text-white p-1 overflow-hidden text-center leading-none">
-                                    {event?.isAllDay && <span className="text-[8px] opacity-80">終日</span>}
-                                    {event?.isTentative && <span className="text-[8px] opacity-80">未定</span>}
-                                    <span>{formatEventTitle(event)}</span>
+                                  <div className="text-xs text-white p-1 overflow-hidden text-center leading-none select-none">
+                                    {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
+                                    {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
+                                    <span className="select-none">{formatEventTitle(event)}</span>
                                   </div>
                                 )}
                               </div>
@@ -1761,6 +1762,40 @@ const CalendarTextGenerator = ({
       </tr>
     ));
   };
+
+  // グローバルスタイルを追加
+  useEffect(() => {
+    // ドラッグ操作中のテキスト選択を防止するCSSを追加
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .select-none {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      body.dragging {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // ドラッグ中にbodyにクラスを追加/削除する
+    const handleDragStart = () => document.body.classList.add('dragging');
+    const handleDragEnd = () => document.body.classList.remove('dragging');
+
+    window.addEventListener('mousedown', handleDragStart);
+    window.addEventListener('mouseup', handleDragEnd);
+
+    return () => {
+      document.head.removeChild(style);
+      window.removeEventListener('mousedown', handleDragStart);
+      window.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
@@ -1951,7 +1986,10 @@ const CalendarTextGenerator = ({
                             key={dayIndex} 
                             className="relative p-0 border-l-[2px] border-r-[2px] border-white select-none cursor-pointer"
                             onClick={() => handleCellClick(dayIndex, timeIndex)}
-                            onMouseDown={() => handleCellMouseDown(dayIndex, timeIndex)}
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // テキスト選択を防止
+                              handleCellMouseDown(dayIndex, timeIndex);
+                            }}
                             onMouseEnter={() => isDragging && handleCellMouseEnter(dayIndex, timeIndex)}
                             onTouchStart={() => handleCellMouseDown(dayIndex, timeIndex)}
                             data-day-index={dayIndex}
