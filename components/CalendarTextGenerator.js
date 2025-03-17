@@ -170,46 +170,61 @@ const CalendarTextGenerator = ({
     const date = weekDates[dayIndex];
     if (!date) return;
     
-    // 既存のコード...
     const dateTimeKey = getDateTimeKey(date, timeIndex);
     const isSelected = selectedDates.includes(dateTimeKey);
     
+    // ドラッグ開始を明示的に設定
     setIsDragging(true);
     setIsDragToDeselect(isSelected);
     setLastSelectedDay(dayIndex);
     setLastSelectedTime(timeIndex);
     
-    // セルクリック時の選択/解除処理
+    // セルをクリックした時点で選択/選択解除
     handleCellClick(dayIndex, timeIndex);
+    
+    // デバッグ出力（問題診断用）
+    console.log('Drag started', { dayIndex, timeIndex, isDragToDeselect: isSelected, selectedDates: selectedDates.length });
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
-    if (!isDragging) return;
-    
-    // 前回の選択状態から変化があるときのみ更新
-    if (lastSelectedDay !== dayIndex || lastSelectedTime !== timeIndex) {
-      const newSelection = [...selectedDates];
-      const dateTimeKey = getDateTimeKey(weekDates[dayIndex], timeIndex);
-      
-      // 選択解除モードなら削除、そうでなければ追加
-      if (isDragToDeselect) {
-        // 選択解除モードでは選択を解除
-        const index = newSelection.findIndex(item => item === dateTimeKey);
-        if (index !== -1) {
-          newSelection.splice(index, 1);
-        }
-      } else {
-        // 選択モードでは追加（重複チェック）
-        if (!newSelection.includes(dateTimeKey)) {
-          newSelection.push(dateTimeKey);
-        }
-      }
-      
-      setSelectedDates(newSelection);
-      setLastSelectedDay(dayIndex);
-      setLastSelectedTime(timeIndex);
-      setGeneratedText(generateText(newSelection));
+    // ドラッグ中でない場合は何もしない
+    if (!isDragging) {
+      return;
     }
+    
+    // 同じセルを複数回通過した場合の重複処理を防止
+    if (lastSelectedDay === dayIndex && lastSelectedTime === timeIndex) {
+      return;
+    }
+    
+    const date = weekDates[dayIndex];
+    if (!date) return;
+    
+    const dateTimeKey = getDateTimeKey(date, timeIndex);
+    const newSelection = [...selectedDates];
+    
+    // 選択モードか選択解除モードかに基づいてセルの状態を変更
+    if (isDragToDeselect) {
+      // 選択解除モード：選択されていれば削除
+      const index = newSelection.findIndex(item => item === dateTimeKey);
+      if (index !== -1) {
+        newSelection.splice(index, 1);
+      }
+    } else {
+      // 選択モード：選択されていなければ追加
+      if (!newSelection.includes(dateTimeKey)) {
+        newSelection.push(dateTimeKey);
+      }
+    }
+    
+    // 状態を更新
+    setSelectedDates(newSelection);
+    setLastSelectedDay(dayIndex);
+    setLastSelectedTime(timeIndex);
+    setGeneratedText(generateText(newSelection));
+    
+    // デバッグ出力（問題診断用）
+    console.log('Drag over cell', { dayIndex, timeIndex, isDragToDeselect, selectedCount: newSelection.length });
   };
 
   const handleMouseUp = () => {
@@ -225,6 +240,9 @@ const CalendarTextGenerator = ({
       setTimeout(() => {
         setIsLongPress(false);
       }, 50);
+      
+      // デバッグ出力（問題診断用）
+      console.log('Drag ended', { selections: selectedDates.length });
     }
   };
 
@@ -1827,13 +1845,18 @@ const CalendarTextGenerator = ({
       handleMouseUp(); // ドラッグ終了時にマウスアップハンドラーを実行
     };
 
+    // グローバルイベントリスナーを設定（ドラッグ操作のための基本設定）
     window.addEventListener('mousedown', handleDragStart);
     window.addEventListener('mouseup', handleDragEnd);
+    
+    // デスクトップの場合、ドキュメント外でマウスを離した場合のフォールバック
+    document.addEventListener('mouseleave', handleMouseUp);
 
     return () => {
       document.head.removeChild(style);
       window.removeEventListener('mousedown', handleDragStart);
       window.removeEventListener('mouseup', handleDragEnd);
+      document.removeEventListener('mouseleave', handleMouseUp);
     };
   }, []);
 
