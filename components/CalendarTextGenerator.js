@@ -858,7 +858,7 @@ const CalendarTextGenerator = ({
     return true;
   };
 
-  // イベントの表示を更新
+  // イベントセルをレンダリング
   const renderEventCell = (event, isOccupied, isSelected) => {
     // イベントの種類に応じたスタイルを設定
     let opacity = 0.7;
@@ -894,7 +894,7 @@ const CalendarTextGenerator = ({
     // 予定を表示しない場合は、空きスロットと同じ表示にする
     if (!showEvent) {
       return (
-        <div className={`w-10 h-10 aspect-square rounded-md flex items-center justify-center ${
+        <div className={`w-7 h-7 sm:w-9 sm:h-9 aspect-square rounded-md flex items-center justify-center ${
           isSelected ? 'bg-red-300 ring-2 ring-red-500' : 'bg-red-100'
         }`}>
         </div>
@@ -910,7 +910,7 @@ const CalendarTextGenerator = ({
     
     return (
       <div 
-        className={`w-10 h-10 aspect-square rounded-md flex items-center justify-center ${
+        className={`w-7 h-7 sm:w-9 sm:h-9 aspect-square rounded-md flex items-center justify-center ${
           isOccupied ? 'bg-gray-200' :
           isSelected ? 'bg-red-300' : 'bg-red-100'
         }`} 
@@ -922,8 +922,8 @@ const CalendarTextGenerator = ({
         }}
       >
         {isOccupied && showTitle && (
-          <div className={`text-xs ${textColor} overflow-hidden text-center leading-none px-0.5 flex flex-col`} style={{ maxWidth: '100%', maxHeight: '100%' }}>
-            {hintText && <span className="text-[6px] opacity-80">{hintText}</span>}
+          <div className={`text-[8px] ${textColor} overflow-hidden text-center leading-none px-0.5 flex flex-col`} style={{ maxWidth: '100%', maxHeight: '100%' }}>
+            {hintText && <span className="text-[5px] opacity-80">{hintText}</span>}
             <span>{formatEventTitle(event)}</span>
           </div>
         )}
@@ -931,26 +931,41 @@ const CalendarTextGenerator = ({
     );
   };
 
+  // ビューポートの高さを設定するスクリプトを追加
+  useEffect(() => {
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      
+      // iPhoneの場合は安全マージンを追加
+      if (/iPhone/.test(navigator.userAgent)) {
+        document.documentElement.style.setProperty('--safe-bottom', '20px');
+      } else {
+        document.documentElement.style.setProperty('--safe-bottom', '0px');
+      }
+    };
+
+    // 初期設定
+    setVH();
+
+    // リサイズイベントでも更新
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+
+    return () => {
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
+  }, []);
+
   return (
     <div className="flex justify-center bg-gray-50 w-full h-screen" style={{ 
-      height: '100vh', 
+      height: 'calc(100vh - var(--safe-bottom, 0px))', 
       overscrollBehavior: 'none',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      <div 
-        className="flex flex-col bg-white w-full max-w-[400px] shadow-md" 
-        style={{ 
-          height: '100%',
-          position: 'relative',
-          maxWidth: '400px',
-          width: '100%',
-          overflow: 'hidden'
-        }}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseUp={handleMouseUp}
-      >
+      <div className="relative flex flex-col w-full sm:max-w-lg max-h-full h-full" style={{maxWidth: '100%'}}>
         {/* 統合されたヘッダー - アプリタイトルとログイン/ユーザー情報を含む */}
         <div className="bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
           style={{ height: 'auto', minHeight: '48px' }}>
@@ -1048,11 +1063,11 @@ const CalendarTextGenerator = ({
         </div>
         
         {/* 曜日ヘッダー部分 - 固定の高さを設定 */}
-        <div className="flex-shrink-0" style={{ height: 'auto', minHeight: '60px' }}>
-          <table className="w-full border-collapse table-fixed" style={{ margin: '4px 0 2px 0' }}>
+        <div className="flex-shrink-0" style={{ height: 'auto', minHeight: '50px' }}>
+          <table className="w-full border-collapse table-fixed" style={{ margin: '2px 0' }}>
             <thead>
-              <tr className="border-b-[4px] sm:border-b-[8px] border-white">
-                <th className="w-[40px] sm:w-[50px] p-0"></th>
+              <tr className="border-b-[4px] sm:border-b-[6px] border-white">
+                <th className="w-[35px] sm:w-[45px] p-0"></th>
                 {weekdays.map((weekday, index) => {
                   const date = weekDates[index];
                   const isToday = date && 
@@ -1061,10 +1076,10 @@ const CalendarTextGenerator = ({
                     date.getFullYear() === today.getFullYear();
                   
                   return (
-                    <th key={index} className="p-0 text-center border-l-[4px] border-r-[4px] sm:border-l-[8px] sm:border-r-[8px] border-white">
-                      <div className="text-xs text-gray-500">{weekday}</div>
-                      <div style={{ marginTop: '2px' }} className="flex justify-center">
-                        <div className={`text-base font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                    <th key={index} className="p-0 text-center border-l-[2px] border-r-[2px] sm:border-l-[4px] sm:border-r-[4px] border-white">
+                      <div className="text-[10px] sm:text-xs text-gray-500">{weekday}</div>
+                      <div style={{ marginTop: '1px' }} className="flex justify-center">
+                        <div className={`text-sm sm:text-base font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center mx-auto' : ''}`}>
                           {date ? date.getDate() : ''}
                         </div>
                       </div>
@@ -1076,15 +1091,12 @@ const CalendarTextGenerator = ({
           </table>
         </div>
         
-        {/* メインカレンダー部分 - 残りの高さを埋めてスクロール */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div 
-            className="overflow-auto w-full h-full" 
-            style={{ 
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain'
-            }}
-          >
+        {/* メインカレンダー部分 - 高さを制限してスクロール */}
+        <div className="flex-1 overflow-auto" style={{ 
+          height: 'auto', 
+          maxHeight: 'calc(var(--vh, 1vh) * 50)' 
+        }}>
+          <div className="relative">
             {/* Current time indicator */}
             {currentTimePosition >= 0 && (
               <>
@@ -1118,7 +1130,7 @@ const CalendarTextGenerator = ({
               <tbody>
                 {timeSlots.map((time, timeIndex) => (
                   <tr key={timeIndex} className="border-t-[1px] border-b-[1px] sm:border-t-[2px] sm:border-b-[2px] border-white">
-                    <td className="w-[40px] sm:w-[50px] p-0 text-xs text-gray-500 text-center align-middle">
+                    <td className="w-[35px] sm:w-[45px] p-0 text-[10px] sm:text-xs text-gray-500 text-center align-middle">
                       {time}
                     </td>
                     {weekdays.map((_, dayIndex) => {
@@ -1138,7 +1150,7 @@ const CalendarTextGenerator = ({
                           data-day-index={dayIndex}
                           data-time-index={timeIndex}
                         >
-                          <div className="flex justify-center py-1">
+                          <div className="flex justify-center py-0.5">
                             {renderEventCell(event, isOccupied, isSelected)}
                           </div>
                         </td>
@@ -1152,21 +1164,22 @@ const CalendarTextGenerator = ({
         </div>
         
         {/* Bottom fixed area - 固定の高さを設定 */}
-        <div className="flex-shrink-0 bg-white border-t border-gray-200" style={{ minHeight: '120px' }}>
+        <div className="flex-shrink-0 bg-white border-t border-gray-200" style={{ minHeight: '100px' }}>
           {/* Selected time text display */}
           <div className="bg-white" style={{ 
-            height: '60px',
+            height: '50px',
             overflow: 'auto'
           }}>
-            <div 
+            <div
+              className="w-full p-2 text-gray-700 rounded-md min-h-[60px]"
               ref={textAreaRef}
-              className="text-sm text-gray-800 h-full p-2 overflow-y-auto"
               contentEditable={!isMobileDevice()}
-              suppressContentEditableWarning={true}
-              onFocus={!isMobileDevice() ? handleTextAreaFocus : undefined}
-              onBlur={!isMobileDevice() ? (e) => {
-                setIsTextAreaFocused(false);
-                setGeneratedText(e.currentTarget.textContent);
+              onFocus={() => setIsTextAreaFocused(true)}
+              onBlur={() => setIsTextAreaFocused(false)}
+              onInput={handleTextAreaChange}
+              onClick={isMobileDevice() ? (() => {
+                // スマホで空の状態でタップした場合は、何もしない
+                if (!generatedText) return;
                 
                 if (typeof window !== 'undefined') {
                   setTimeout(() => {
@@ -1176,9 +1189,9 @@ const CalendarTextGenerator = ({
                     });
                   }, 100);
                 }
-              } : undefined}
+              }) : undefined}
               style={{ 
-                fontSize: '16px',
+                fontSize: '14px',
                 backgroundColor: isTextAreaFocused ? '#f8f8f8' : 'white',
                 userSelect: isMobileDevice() ? 'none' : 'text',
                 WebkitUserSelect: isMobileDevice() ? 'none' : 'text',
@@ -1192,7 +1205,7 @@ const CalendarTextGenerator = ({
                   <div key={index}>{line}</div>
                 ))
               ) : (
-                <div className="text-gray-400">
+                <div className="text-gray-400 text-sm">
                   カレンダーで選択した日時が、自動で入力されます。
                   {isMobileDevice() && <div className="mt-1 text-xs">※モバイル版では編集できません</div>}
                 </div>
@@ -1201,18 +1214,18 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* Footer buttons */}
-          <div className="flex justify-center py-4">
+          <div className="flex-shrink-0 flex justify-center py-1 sm:py-2 pb-3">
             <div className="flex space-x-4">
               <button 
                 onClick={resetSelection}
-                className="px-6 sm:px-10 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm h-10 font-bold"
+                className="px-4 sm:px-6 py-1 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold"
               >
                 リセット
               </button>
               
               <button 
                 onClick={copyToClipboard}
-                className="px-6 sm:px-10 bg-red-400 text-white rounded-full text-xs sm:text-sm h-10 font-bold"
+                className="px-4 sm:px-6 py-1 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold"
                 disabled={!generatedText}
               >
                 文字をコピー
