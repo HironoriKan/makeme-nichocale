@@ -1164,17 +1164,39 @@ const CalendarTextGenerator = ({
     return true;
   };
 
-  // イベントセルをレンダリング
+  // セルの表示スタイルを更新
   const renderEventCell = (event, isOccupied, isSelected) => {
-    const eventColor = isOccupied ? getEventColor(event) : '#E11D48';
+    // 予定がない場合のスタイル
+    let bgColor = isSelected ? '#FDA4AF' : '#FEE2E2'; // 選択されていれば濃い赤、そうでなければ薄い赤
+    let textColor = 'inherit';
+    let borderColor = 'transparent';
+    let opacity = 1;
+    
+    // 予定がある場合のスタイル
+    if (isOccupied) {
+      const calendarColor = getEventColor(event);
+      
+      if (isSelected) {
+        // 選択状態の予定セル: 濃い赤背景 + 白文字 + カレンダー色のボーダー
+        bgColor = '#FDA4AF';
+        textColor = '#ffffff';
+        borderColor = calendarColor;
+        opacity = 0.9;
+      } else {
+        // 未選択の予定セル: 白背景 + カレンダー色の文字 + カレンダー色のボーダー
+        bgColor = '#ffffff';
+        textColor = calendarColor;
+        borderColor = calendarColor;
+        opacity = 1;
+      }
+    }
     
     // スタイリングを適用
     const cellStyle = {
-      // 選択状態か予定ありの場合の背景色
-      backgroundColor: isSelected ? '#FDA4AF' : '#FFFFFF',
-      // 予定がある場合はボーダーカラーを設定
-      border: isOccupied ? `2px solid ${eventColor}` : (isSelected ? '1px solid #ffffff' : 'none'),
-      // 選択状態の場合は赤い外枠を表示
+      backgroundColor: bgColor,
+      color: textColor,
+      opacity: opacity,
+      border: `2px solid ${borderColor}`,
       boxShadow: isSelected ? '0 0 0 2px #E11D48' : 'none',
       width: '94%',
       height: '94%',
@@ -1189,10 +1211,7 @@ const CalendarTextGenerator = ({
         style={cellStyle}
       >
         {isOccupied && (
-          <div 
-            className="text-xs p-1 overflow-hidden text-center leading-none select-none" 
-            style={{ color: eventColor }}
-          >
+          <div className="text-xs p-1 overflow-hidden text-center leading-none select-none">
             {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
             {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
             <span className="select-none">{formatEventTitle(event)}</span>
@@ -1547,17 +1566,6 @@ const CalendarTextGenerator = ({
                       title="ログアウト"
                     />
                   )}
-                  {/* 設定アイコン */}
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                      className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  )}
                 </div>
               ) : (
                 <button
@@ -1597,6 +1605,18 @@ const CalendarTextGenerator = ({
                     今日
                   </button>
                   <button onClick={nextWeek} className="text-gray-600 text-lg">&gt;</button>
+                  
+                  {/* 設定アイコン */}
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => setShowSettingsPopup(!showSettingsPopup)}
+                      className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2021,27 +2041,14 @@ const CalendarTextGenerator = ({
             {/* 右端：設定アイコン */}
             <div className="flex items-center w-1/3 justify-end">
               {isAuthenticated && (
-                <div className="flex items-center">
-                  {userInfo?.photos?.[0]?.url && (
-                    <img
-                      src={userInfo.photos[0].url}
-                      alt="User"
-                      className="h-8 w-8 rounded-full cursor-pointer"
-                      onClick={handleLogout}
-                      title="ログアウト"
-                    />
-                  )}
-                  {isAuthenticated && (
-                    <button 
-                      onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                      className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowSettingsPopup(!showSettingsPopup)}
+                  className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                  </svg>
+                </button>
               )}
             </div>
 
