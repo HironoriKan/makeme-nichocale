@@ -1807,7 +1807,10 @@ const CalendarTextGenerator = ({
 
     // ドラッグ中にbodyにクラスを追加/削除する
     const handleDragStart = () => document.body.classList.add('dragging');
-    const handleDragEnd = () => document.body.classList.remove('dragging');
+    const handleDragEnd = () => {
+      document.body.classList.remove('dragging');
+      handleMouseUp(); // ドラッグ終了時にマウスアップハンドラーを実行
+    };
 
     window.addEventListener('mousedown', handleDragStart);
     window.addEventListener('mouseup', handleDragEnd);
