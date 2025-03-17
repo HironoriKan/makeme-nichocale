@@ -967,11 +967,13 @@ const CalendarTextGenerator = ({
 
   // ビューポートの高さを設定するスクリプトを追加
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    
     const setVH = () => {
       const vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
       
-      // iPhoneの場合は安全マージンを追加（クライアントサイドでのみ実行）
+      // iPhoneの場合は安全マージンを追加
       if (typeof navigator !== 'undefined' && /iPhone/.test(navigator.userAgent)) {
         document.documentElement.style.setProperty('--safe-bottom', '20px');
       } else {
@@ -979,24 +981,31 @@ const CalendarTextGenerator = ({
       }
 
       // 各セクションの高さを計算
-      if (typeof document !== 'undefined') {
-        // 固定高さの要素を取得
-        const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
-        const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
-        const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-        const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 70;
-        const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
-        const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
-        
-        // 固定要素の合計高さ
-        const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
-        
-        // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
-        const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
-        
-        // グリッドの高さを設定（全体の60%程度）
-        document.documentElement.style.setProperty('--grid-height', `${availableHeight * 0.6}px`);
-      }
+      // 固定高さの要素を取得
+      const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
+      const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
+      const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
+      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 70;
+      const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
+      const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
+      
+      // 固定要素の合計高さ
+      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
+      
+      // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
+      const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
+      
+      // グリッドの高さを設定（全体の60%程度）
+      const gridHeight = Math.max(200, availableHeight * 0.6); // 最低200pxを確保
+      document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
+      
+      // コンソールに高さ情報を出力（デバッグ用）
+      console.log('Grid height calculation:', {
+        windowHeight: window.innerHeight,
+        fixedHeight,
+        availableHeight,
+        gridHeight
+      });
     };
 
     // 初期設定
@@ -1004,7 +1013,9 @@ const CalendarTextGenerator = ({
 
     // リサイズイベントでも更新
     window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(setVH, 100);
+    });
 
     return () => {
       window.removeEventListener('resize', setVH);
@@ -1219,7 +1230,8 @@ const CalendarTextGenerator = ({
         
         {/* ④カレンダーグリッド（内部スクロール）：端末によって高さ調整 */}
         <div className="calendar-grid flex-1 overflow-auto" style={{ 
-          height: 'var(--grid-height, auto)'
+          height: 'var(--grid-height, 300px)', // フォールバック値を300pxに設定
+          maxHeight: '60vh' // 最大高さも制限
         }}>
           <div className="relative">
             {/* Current time indicator */}
@@ -1480,7 +1492,7 @@ const CalendarTextGenerator = ({
       overflow: 'hidden'
     }}>
       {/* モバイル表示（750px未満） */}
-      <div className="md:hidden">
+      <div className="md:hidden h-full flex flex-col">
         {renderMobileLayout()}
       </div>
       
