@@ -1023,71 +1023,32 @@ const CalendarTextGenerator = ({
 
   // イベントセルをレンダリング
   const renderEventCell = (event, isOccupied, isSelected) => {
-    // イベント関連の表示スタイル設定
-    const baseStyle = {
+    let bgColor = isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2');
+    let opacity = isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1;
+    
+    // スタイリングを適用
+    const cellStyle = {
+      backgroundColor: bgColor,
+      opacity: opacity,
+      // 選択状態の場合、予定の有無に関わらず明確な枠線を表示
+      boxShadow: isSelected ? 'inset 0 0 0 4px #E11D48' : 'none',
+      // 枠線のコントラストを高める
+      border: isSelected ? '1px solid #ffffff' : 'none',
       width: '100%',
-      height: isMobileDevice() ? '100%' : '32px',
-      padding: '1px',
+      height: '100%',
       borderRadius: '4px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
     };
-    
-    const eventColor = isOccupied ? getEventColor(event) : '#FEE2E2';
-    const selectedColor = '#FDA4AF';
-    const defaultColor = '#FEE2E2';
-    
-    // 選択状態によるスタイル変更
-    const selectedStyle = isSelected ? {
-      backgroundColor: isOccupied ? eventColor : selectedColor,
-      border: '3px solid #F43F5E',
-      boxShadow: '0 0 0 1px rgba(244, 63, 94, 0.5)',
-      position: 'relative',
-      zIndex: 1
-    } : {
-      backgroundColor: isOccupied ? eventColor : defaultColor,
-      border: '1px solid transparent'
-    };
-    
-    // イベントの種類による透明度調整
-    let opacity = 1;
-    if (isOccupied) {
-      if (event.isAllDay) {
-        opacity = 0.6;
-      } else if (event.isTentative) {
-        opacity = 0.5;
-      } else {
-        opacity = 0.7;
-      }
-    }
-    
-    // ヒントテキスト（終日/未定など）
-    let hintText = '';
-    if (isOccupied) {
-      if (event.isAllDay) {
-        hintText = '終日';
-      } else if (event.isTentative) {
-        hintText = '未定';
-      }
-    }
-    
-    // テキスト色の設定
-    const textColor = 'text-white';
-    const showTitle = true;
     
     return (
-      <div
-        style={{
-          ...baseStyle,
-          ...selectedStyle,
-          opacity
-        }}
+      <div 
+        className="w-full h-full rounded-md flex items-center justify-center overflow-hidden"
+        style={cellStyle}
       >
-        {isOccupied && showTitle && (
-          <div className={`text-[9px] sm:text-xs ${textColor} overflow-hidden text-center leading-none px-0.5 flex flex-col`} style={{ maxWidth: '100%', maxHeight: '100%' }}>
-            {hintText && <span className="text-[6px] sm:text-[8px] opacity-80">{hintText}</span>}
-            <span>{formatEventTitle(event)}</span>
+        {isOccupied && (
+          <div className="text-xs text-white p-1 overflow-hidden text-center leading-none select-none">
+            {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
+            {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
+            <span className="select-none">{formatEventTitle(event)}</span>
           </div>
         )}
       </div>
@@ -1344,27 +1305,8 @@ const CalendarTextGenerator = ({
                         data-day-index={dayIndex}
                         data-time-index={timeIndex}
                       >
-                        <div 
-                          className={`absolute inset-0.5 rounded-sm ${
-                            isOccupied ? 'bg-gray-200' :
-                            isSelected ? 'bg-red-300' : 'bg-red-50'
-                          }`}
-                          style={{ 
-                            backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-                            opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1,
-                            // 選択状態のセルに目立つ外枠を追加
-                            border: isSelected ? '3px solid #F43F5E' : '1px solid #F9FAFB',
-                            boxShadow: isSelected ? '0 0 0 1px rgba(244, 63, 94, 0.5)' : 'none',
-                            zIndex: isSelected ? 1 : 0
-                          }}
-                        >
-                          {isOccupied && (
-                            <div className="text-[9px] text-white truncate p-0.5 leading-none">
-                              {event?.isAllDay && <span className="text-[7px] opacity-80">終日</span>}
-                              {event?.isTentative && <span className="text-[7px] opacity-80">未定</span>}
-                              <span>{formatEventTitle(event)}</span>
-                            </div>
-                          )}
+                        <div className="absolute inset-0.5 flex items-center justify-center">
+                          {renderEventCell(event, isOccupied, isSelected)}
                         </div>
                       </div>
                     );
@@ -1652,27 +1594,8 @@ const CalendarTextGenerator = ({
                               data-day-index={dayIndex}
                               data-time-index={timeIndex}
                             >
-                              <div 
-                                className={`h-16 rounded flex items-center justify-center select-none ${
-                                  isOccupied ? 'bg-gray-200' :
-                                  isSelected ? 'bg-red-300' : 'bg-red-50'
-                                }`}
-                                style={{ 
-                                  backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
-                                  opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1,
-                                  // 選択状態のセルに目立つ外枠を追加
-                                  border: isSelected ? '3px solid #F43F5E' : '1px solid #F9FAFB',
-                                  boxShadow: isSelected ? '0 0 0 1px rgba(244, 63, 94, 0.5)' : 'none',
-                                  zIndex: isSelected ? 1 : 0
-                                }}
-                              >
-                                {isOccupied && (
-                                  <div className="text-xs text-white p-1 overflow-hidden text-center leading-none select-none">
-                                    {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
-                                    {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
-                                    <span className="select-none">{formatEventTitle(event)}</span>
-                                  </div>
-                                )}
+                              <div className="h-16 w-full flex items-center justify-center">
+                                {renderEventCell(event, isOccupied, isSelected)}
                               </div>
                             </td>
                           );
