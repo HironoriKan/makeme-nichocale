@@ -921,7 +921,7 @@ const CalendarTextGenerator = ({
     // 予定を表示しない場合は、空きスロットと同じ表示にする
     if (!showEvent) {
       return (
-        <div className={`w-7 h-7 sm:w-10 sm:h-10 aspect-square rounded-md flex items-center justify-center ${
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 aspect-square rounded-md flex items-center justify-center ${
           isSelected ? 'bg-red-300 ring-2 ring-red-500' : 'bg-red-100'
         }`}>
         </div>
@@ -937,7 +937,7 @@ const CalendarTextGenerator = ({
     
     return (
       <div 
-        className={`w-7 h-7 sm:w-10 sm:h-10 aspect-square rounded-md flex items-center justify-center ${
+        className={`w-8 h-8 sm:w-10 sm:h-10 aspect-square rounded-md flex items-center justify-center ${
           isOccupied ? 'bg-gray-200' :
           isSelected ? 'bg-red-300' : 'bg-red-100'
         }`} 
@@ -977,6 +977,25 @@ const CalendarTextGenerator = ({
       } else {
         document.documentElement.style.setProperty('--safe-bottom', '0px');
       }
+
+      // 各セクションの高さを計算
+      if (typeof document !== 'undefined') {
+        // 固定高さの要素を取得
+        const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
+        const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
+        const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
+        const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 70;
+        const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
+        
+        // 固定要素の合計高さ
+        const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight;
+        
+        // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
+        const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
+        
+        // グリッドの高さを設定
+        document.documentElement.style.setProperty('--grid-height', `${availableHeight}px`);
+      }
     };
 
     // 初期設定
@@ -1000,8 +1019,8 @@ const CalendarTextGenerator = ({
       overflow: 'hidden'
     }}>
       <div className="relative flex flex-col w-full sm:max-w-lg max-h-full h-full" style={{maxWidth: '100%'}}>
-        {/* 統合されたヘッダー - アプリタイトルとログイン/ユーザー情報を含む */}
-        <div className="bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
+        {/* ①画面のヘッダー：高さ固定 */}
+        <div className="app-header bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
           style={{ height: 'auto', minHeight: '48px' }}>
           {/* 左側：アプリタイトル */}
           <div className="text-sm sm:text-base font-bold text-gray-800">
@@ -1045,8 +1064,8 @@ const CalendarTextGenerator = ({
           </div>
         </div>
         
-        {/* カレンダーナビゲーションヘッダー */}
-        <div className="bg-white p-2 sm:p-3 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
+        {/* ②ナビゲーションバー：高さ固定 */}
+        <div className="nav-header bg-white p-2 sm:p-3 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
           {/* 左端：月表示と選択ボタン */}
           <div className="flex items-center relative w-1/3 justify-start">
             <button 
@@ -1096,12 +1115,12 @@ const CalendarTextGenerator = ({
           {renderSettingsPopup()}
         </div>
         
-        {/* 曜日ヘッダー部分 - 固定の高さを設定 */}
-        <div className="flex-shrink-0" style={{ height: 'auto', minHeight: '50px', maxHeight: '70px' }}>
+        {/* ③カレンダーの日付と曜日のヘッダー：高さ固定 */}
+        <div className="calendar-header flex-shrink-0" style={{ height: 'auto', minHeight: '50px' }}>
           <table className="w-full border-collapse table-fixed" style={{ margin: '2px 0' }}>
             <thead>
-              <tr className="border-b-[4px] sm:border-b-[8px] border-white">
-                <th className="w-[35px] sm:w-[50px] p-0"></th>
+              <tr className="border-b-[4px] border-white">
+                <th className="w-[40px] sm:w-[50px] p-0"></th>
                 {weekdays.map((weekday, index) => {
                   const date = weekDates[index];
                   const isToday = date && 
@@ -1110,7 +1129,7 @@ const CalendarTextGenerator = ({
                     date.getFullYear() === today.getFullYear();
                   
                   return (
-                    <th key={index} className="p-0 text-center border-l-[2px] border-r-[2px] sm:border-l-[4px] sm:border-r-[4px] border-white">
+                    <th key={index} className="p-0 text-center border-l-[3px] border-r-[3px] border-white">
                       <div className="text-[10px] sm:text-xs text-gray-500">{weekday}</div>
                       <div style={{ marginTop: '1px' }} className="flex justify-center">
                         <div className={`text-sm sm:text-base font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center mx-auto' : ''}`}>
@@ -1125,10 +1144,9 @@ const CalendarTextGenerator = ({
           </table>
         </div>
         
-        {/* メインカレンダー部分 - 高さを制限してスクロール */}
-        <div className="flex-1 overflow-auto sm:max-h-[65vh]" style={{ 
-          height: 'auto', 
-          maxHeight: 'calc(var(--vh, 1vh) * 50)'
+        {/* ④カレンダーグリッド（内部スクロール）：端末によって高さ調整 */}
+        <div className="calendar-grid flex-1 overflow-auto" style={{ 
+          height: 'var(--grid-height, auto)'
         }}>
           <div className="relative">
             {/* Current time indicator */}
@@ -1164,7 +1182,7 @@ const CalendarTextGenerator = ({
               <tbody>
                 {timeSlots.map((time, timeIndex) => (
                   <tr key={timeIndex} className="border-t-[1px] border-b-[1px] sm:border-t-[2px] sm:border-b-[2px] border-white">
-                    <td className="w-[35px] sm:w-[50px] p-0 text-[10px] sm:text-xs text-gray-500 text-center align-middle">
+                    <td className="w-[40px] sm:w-[50px] p-0 text-[10px] sm:text-xs text-gray-500 text-center align-middle">
                       {time}
                     </td>
                     {weekdays.map((_, dayIndex) => {
@@ -1176,7 +1194,7 @@ const CalendarTextGenerator = ({
                       return (
                         <td 
                           key={dayIndex} 
-                          className="relative p-0 border-l-[2px] border-r-[2px] sm:border-l-[4px] sm:border-r-[4px] border-white select-none cursor-pointer"
+                          className="relative p-0 border-l-[3px] border-r-[3px] border-white select-none cursor-pointer"
                           onClick={() => handleCellClick(dayIndex, timeIndex)}
                           onMouseDown={() => handleCellMouseDown(dayIndex, timeIndex)}
                           onMouseEnter={() => isDragging && handleCellMouseEnter(dayIndex, timeIndex)}
@@ -1184,7 +1202,7 @@ const CalendarTextGenerator = ({
                           data-day-index={dayIndex}
                           data-time-index={timeIndex}
                         >
-                          <div className="flex justify-center py-0.5 sm:py-1">
+                          <div className="flex justify-center py-1">
                             {renderEventCell(event, isOccupied, isSelected)}
                           </div>
                         </td>
@@ -1197,10 +1215,9 @@ const CalendarTextGenerator = ({
           </div>
         </div>
         
-        {/* Bottom fixed area - 固定の高さを設定 */}
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 min-h-[100px] sm:min-h-[120px]">
-          {/* Selected time text display */}
-          <div className="bg-white h-[50px] sm:h-[70px] overflow-auto">
+        {/* ⑤テキスト反映エリア（内部スクロール）：高さ固定 */}
+        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200" style={{ height: '70px' }}>
+          <div className="bg-white h-full overflow-auto">
             <div
               className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[60px]"
               ref={textAreaRef}
@@ -1243,25 +1260,25 @@ const CalendarTextGenerator = ({
               )}
             </div>
           </div>
-          
-          {/* Footer buttons */}
-          <div className="flex-shrink-0 flex justify-center py-1 sm:py-3 pb-3 sm:pb-4">
-            <div className="flex space-x-4 sm:space-x-6">
-              <button 
-                onClick={resetSelection}
-                className="px-4 sm:px-8 py-1 sm:py-2 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold"
-              >
-                リセット
-              </button>
-              
-              <button 
-                onClick={copyToClipboard}
-                className="px-4 sm:px-8 py-1 sm:py-2 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold"
-                disabled={!generatedText}
-              >
-                文字をコピー
-              </button>
-            </div>
+        </div>
+        
+        {/* ⑥CTAボタン：高さ固定 */}
+        <div className="button-area flex-shrink-0 flex justify-center py-2 sm:py-3" style={{ height: '60px' }}>
+          <div className="flex space-x-4 sm:space-x-6">
+            <button 
+              onClick={resetSelection}
+              className="px-4 sm:px-8 py-1 sm:py-2 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold"
+            >
+              リセット
+            </button>
+            
+            <button 
+              onClick={copyToClipboard}
+              className="px-4 sm:px-8 py-1 sm:py-2 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold"
+              disabled={!generatedText}
+            >
+              文字をコピー
+            </button>
           </div>
         </div>
       </div>
