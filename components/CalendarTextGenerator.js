@@ -777,7 +777,7 @@ const CalendarTextGenerator = ({
                 }
               });
             }}
-            className="text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded"
           >
             すべて解除
           </button>
@@ -1046,7 +1046,7 @@ const CalendarTextGenerator = ({
               <button
                 onClick={handleLogin}
                 disabled={isLoading || !isApiInitialized}
-                className="flex items-center justify-center rounded-full bg-red-400 hover:bg-red-500 text-white w-8 h-8 focus:outline-none"
+                className="flex items-center justify-center rounded-full bg-red-400 text-white w-8 h-8 focus:outline-none"
                 title="Googleでログイン"
               >
                 {isLoading ? (
@@ -1073,7 +1073,7 @@ const CalendarTextGenerator = ({
                 setShowCalendarPopup(!showCalendarPopup);
                 setPopupMonth(new Date(currentDate));
               }}
-              className="flex items-center p-1 hover:bg-gray-100 rounded"
+              className="flex items-center p-1 rounded"
             >
               <span className="text-sm sm:text-base font-bold">
                 {weekDates.length > 0 ? `${weekDates[0].getMonth() + 1}月` : ''}
@@ -1089,9 +1089,9 @@ const CalendarTextGenerator = ({
           {/* 中央：ナビゲーションボタン */}
           <div className="flex items-center justify-center w-1/3">
             <div className="flex items-center space-x-1 sm:space-x-3">
-              <button onClick={previousWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full hover:bg-gray-100">&lt;</button>
-              <button onClick={goToToday} className="px-3 py-1 text-gray-600 text-sm font-bold rounded-full hover:bg-gray-100 whitespace-nowrap min-w-[60px]">今日</button>
-              <button onClick={nextWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full hover:bg-gray-100">&gt;</button>
+              <button onClick={previousWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&lt;</button>
+              <button onClick={goToToday} className="px-3 py-1 text-gray-600 text-sm font-bold rounded-full whitespace-nowrap min-w-[60px]">今日</button>
+              <button onClick={nextWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&gt;</button>
             </div>
           </div>
           
@@ -1100,7 +1100,7 @@ const CalendarTextGenerator = ({
             {isAuthenticated && (
               <button
                 onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                className="flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 w-10 h-10 focus:outline-none"
+                className="flex items-center justify-center rounded-full text-gray-600 w-10 h-10 focus:outline-none"
                 title="カレンダー設定"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1267,14 +1267,14 @@ const CalendarTextGenerator = ({
           <div className="flex space-x-4 sm:space-x-6">
             <button 
               onClick={resetSelection}
-              className="px-4 sm:px-8 py-1 sm:py-2 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold"
+              className="px-4 sm:px-8 py-1 sm:py-2 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold active:opacity-90"
             >
               リセット
             </button>
             
             <button 
               onClick={copyToClipboard}
-              className="px-4 sm:px-8 py-1 sm:py-2 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold"
+              className="px-4 sm:px-8 py-1 sm:py-2 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold active:opacity-90"
               disabled={!generatedText}
             >
               文字をコピー
@@ -1290,9 +1290,9 @@ const CalendarTextGenerator = ({
             © 2024 メイクミー日程調整 All Rights Reserved.
           </div>
           <div className="flex space-x-4">
-            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">利用規約</a>
-            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">プライバシーポリシー</a>
-            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">お問い合わせ</a>
+            <a href="#" className="text-xs text-gray-500">利用規約</a>
+            <a href="#" className="text-xs text-gray-500">プライバシーポリシー</a>
+            <a href="#" className="text-xs text-gray-500">お問い合わせ</a>
           </div>
         </div>
       </div>
