@@ -16,6 +16,12 @@ const CalendarTextGenerator = ({
   calendarSettings = { allowAllDayEvents: false, allowTentativeEvents: false },
   updateCalendarSettings
 }) => {
+  // カスタムログアウト処理
+  const handleCustomLogout = () => {
+    localStorage.removeItem('calendarAuth');
+    handleLogout();
+  };
+  
   const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
   const timeSlots = Array.from({ length: 14 }, (_, i) => `${i + 8}:00`);
   const [selectedDates, setSelectedDates] = useState([]);
@@ -46,6 +52,7 @@ const CalendarTextGenerator = ({
   const [isLongPress, setIsLongPress] = useState(false);
   const [dragOperation, setDragOperation] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
+  const [text, setText] = useState('');
 
   // Custom hook for viewport height
   const useViewportHeight = () => {
@@ -1387,14 +1394,27 @@ const CalendarTextGenerator = ({
             <div className="flex items-center space-x-2">
               {isAuthenticated ? (
                 <div className="flex items-center">
-                  {userInfo?.photos?.[0]?.url && (
-                    <img
-                      src={userInfo.photos[0].url}
-                      alt="User"
-                      className="h-8 w-8 rounded-full cursor-pointer"
-                      onClick={handleLogout}
-                      title="ログアウト"
-                    />
+                  {userInfo?.photos?.[0]?.url ? (
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={userInfo.photos[0].url}
+                        alt="User"
+                        className="h-8 w-8 rounded-full"
+                      />
+                      <button
+                        onClick={handleCustomLogout}
+                        className="text-xs text-red-500 border border-red-300 rounded px-2 py-1"
+                      >
+                        ログアウト
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCustomLogout}
+                      className="text-xs text-red-500 border border-red-300 rounded px-2 py-1"
+                    >
+                      ログアウト
+                    </button>
                   )}
                 </div>
               ) : (
@@ -1562,14 +1582,27 @@ const CalendarTextGenerator = ({
             <div className="flex items-center space-x-3">
               {isAuthenticated ? (
                 <div className="flex items-center">
-                  {userInfo?.photos?.[0]?.url && (
-                    <img
-                      src={userInfo.photos[0].url}
-                      alt="ユーザー"
-                      className="h-9 w-9 rounded-full cursor-pointer"
-                      onClick={handleLogout}
-                      title="ログアウト"
-                    />
+                  {userInfo?.photos?.[0]?.url ? (
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={userInfo.photos[0].url}
+                        alt="ユーザー"
+                        className="h-7 w-7 rounded-full"
+                      />
+                      <button
+                        onClick={handleCustomLogout}
+                        className="text-xs text-red-500 border border-red-300 rounded px-1 py-0.5"
+                      >
+                        ログアウト
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCustomLogout}
+                      className="text-xs text-red-500 border border-red-300 rounded px-1 py-0.5"
+                    >
+                      ログアウト
+                    </button>
                   )}
                 </div>
               ) : (
@@ -1955,6 +1988,21 @@ const CalendarTextGenerator = ({
     newDate.setMonth(currentDate.getMonth() + 1);
     setCurrentDate(newDate);
   };
+
+  // ログイン状態を保持するために追加
+  useEffect(() => {
+    // コンポーネントマウント時にローカルストレージからログイン状態を確認
+    const savedAuthState = localStorage.getItem('calendarAuth');
+    if (savedAuthState && !isAuthenticated && isApiInitialized) {
+      // 保存されたユーザー情報があれば自動ログイン
+      handleLogin();
+    }
+    
+    // ログイン状態が変わったらローカルストレージに保存
+    if (isAuthenticated) {
+      localStorage.setItem('calendarAuth', 'true');
+    }
+  }, [isAuthenticated, isApiInitialized, handleLogin]);
 
   return (
     <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
