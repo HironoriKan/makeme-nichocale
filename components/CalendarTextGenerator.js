@@ -193,8 +193,28 @@ const CalendarTextGenerator = ({
     setDragStartCell({ dayIndex, timeIndex });
     setLastDraggedCell({ dayIndex, timeIndex });
     
-    // マウスダウン時に選択/選択解除は行わない（クリックイベントに任せる）
-    // これにより、クリック時の動作がより自然になる
+    // 重要: ドラッグ開始時に最初のセルを選択/選択解除する
+    const newSelection = [...selectedDates];
+    const existingIndex = newSelection.findIndex(item => item === dateTimeKey);
+    
+    // ドラッグモードに基づいて選択/選択解除する
+    if (isSelected) {
+      // 選択解除モード
+      if (existingIndex !== -1) {
+        newSelection.splice(existingIndex, 1);
+      }
+    } else {
+      // 選択モード
+      if (existingIndex === -1) {
+        newSelection.push(dateTimeKey);
+      }
+    }
+    
+    // 選択状態を更新
+    setSelectedDates(newSelection);
+    setGeneratedText(generateText(newSelection));
+    
+    console.log('Drag started', { dayIndex, timeIndex, isSelected });
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
@@ -209,29 +229,49 @@ const CalendarTextGenerator = ({
     const date = weekDates[dayIndex];
     if (!date) return;
     
-    const dateTimeKey = getDateTimeKey(date, timeIndex);
-    const newSelection = [...selectedDates];
-    const existingIndex = newSelection.findIndex(item => item === dateTimeKey);
+    // 開始セルから現在のセルまでのすべてのセルを処理
+    const startCell = dragStartCell;
+    const currentCell = { dayIndex, timeIndex };
     
-    // ドラッグ開始時の状態に基づいて選択/選択解除を行う
-    if (isDragToDeselect) {
-      // 選択解除モード
-      if (existingIndex !== -1) {
-        newSelection.splice(existingIndex, 1);
-      }
-    } else {
-      // 選択モード
-      if (existingIndex === -1) {
-        newSelection.push(dateTimeKey);
+    // 開始セルと現在のセルの間にあるすべてのセルを計算
+    const minDayIndex = Math.min(startCell.dayIndex, currentCell.dayIndex);
+    const maxDayIndex = Math.max(startCell.dayIndex, currentCell.dayIndex);
+    const minTimeIndex = Math.min(startCell.timeIndex, currentCell.timeIndex);
+    const maxTimeIndex = Math.max(startCell.timeIndex, currentCell.timeIndex);
+    
+    // 新しい選択を開始
+    let newSelection = [...selectedDates];
+    
+    // 範囲内のすべてのセルを処理
+    for (let di = minDayIndex; di <= maxDayIndex; di++) {
+      const rangeDate = weekDates[di];
+      if (!rangeDate) continue;
+      
+      for (let ti = minTimeIndex; ti <= maxTimeIndex; ti++) {
+        const rangeDateTimeKey = getDateTimeKey(rangeDate, ti);
+        const existingIndex = newSelection.findIndex(item => item === rangeDateTimeKey);
+        
+        // ドラッグモードに基づいて選択/選択解除
+        if (isDragToDeselect) {
+          // 選択解除モード
+          if (existingIndex !== -1) {
+            newSelection.splice(existingIndex, 1);
+          }
+        } else {
+          // 選択モード
+          if (existingIndex === -1) {
+            newSelection.push(rangeDateTimeKey);
+          }
+        }
       }
     }
     
     // 状態を更新
     setSelectedDates(newSelection);
-    setLastDraggedCell({ dayIndex, timeIndex });
+    setLastDraggedCell(currentCell);
     setGeneratedText(generateText(newSelection));
     
-    console.log('Drag over cell', { dayIndex, timeIndex, selectedCount: newSelection.length });
+    console.log('Drag over cell', { minDayIndex, maxDayIndex, minTimeIndex, maxTimeIndex, selectedCount: newSelection.length });
   };
 
   const handleMouseUp = () => {
@@ -269,6 +309,27 @@ const CalendarTextGenerator = ({
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(50); // 50msの振動フィードバック
       }
+      
+      // 重要: 長押し開始時に最初のセルを選択/選択解除する
+      const newSelection = [...selectedDates];
+      const existingIndex = newSelection.findIndex(item => item === dateTimeKey);
+      
+      // ドラッグモードに基づいて選択/選択解除する
+      if (isSelected) {
+        // 選択解除モード
+        if (existingIndex !== -1) {
+          newSelection.splice(existingIndex, 1);
+        }
+      } else {
+        // 選択モード
+        if (existingIndex === -1) {
+          newSelection.push(dateTimeKey);
+        }
+      }
+      
+      // 選択状態を更新
+      setSelectedDates(newSelection);
+      setGeneratedText(generateText(newSelection));
       
       console.log('Long press detected:', { dayIndex, timeIndex });
     }, 500); // 500msの長押しで複数選択モードに入る
@@ -310,6 +371,8 @@ const CalendarTextGenerator = ({
               element.dataset.timeIndex !== undefined) {
             const dayIndex = parseInt(element.dataset.dayIndex);
             const timeIndex = parseInt(element.dataset.timeIndex);
+            
+            // 開始セルから現在のセルまでの範囲を選択するロジックを使用
             handleCellMouseEnter(dayIndex, timeIndex);
           }
         }
@@ -1031,12 +1094,15 @@ const CalendarTextGenerator = ({
       backgroundColor: bgColor,
       opacity: opacity,
       // 選択状態の場合、予定の有無に関わらず明確な枠線を表示
-      boxShadow: isSelected ? 'inset 0 0 0 4px #E11D48' : 'none',
-      // 枠線のコントラストを高める
+      // 内側ではなく外側のボーダーに変更（insetを削除）
+      boxShadow: isSelected ? '0 0 0 4px #E11D48' : 'none',
+      // 内側に白いボーダーを追加してコントラストを高める
       border: isSelected ? '1px solid #ffffff' : 'none',
       width: '100%',
       height: '100%',
       borderRadius: '4px',
+      position: 'relative', // 外側のボーダーをセルの上に適切に表示するため
+      zIndex: isSelected ? 2 : 1, // 選択されたセルを前面に表示
     };
     
     return (
