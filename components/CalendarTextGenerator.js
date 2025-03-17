@@ -1104,7 +1104,7 @@ const CalendarTextGenerator = ({
               className="mr-2"
             />
             <label htmlFor="allow-all-day-events" className="text-sm text-gray-800">
-              終日予定がある日を表示しない
+              終日予定がある日も選択できるようにする
             </label>
           </div>
           
@@ -1121,7 +1121,7 @@ const CalendarTextGenerator = ({
               className="mr-2"
             />
             <label htmlFor="allow-tentative-events" className="text-sm text-gray-800">
-              未回答/未定の予定がある時間を表示しない
+              未回答/未定の予定がある時間も選択できるようにする
             </label>
           </div>
           
@@ -1198,22 +1198,25 @@ const CalendarTextGenerator = ({
       opacity: opacity,
       border: `2px solid ${borderColor}`,
       boxShadow: isSelected ? '0 0 0 2px #E11D48' : 'none',
-      width: '94%',
-      height: '94%',
+      width: '100%',  // 親要素に対して100%にする
+      height: '100%', // 親要素に対して100%にする
       borderRadius: '8px',
       position: 'relative',
       zIndex: isSelected ? 2 : 1,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     };
     
     return (
       <div 
-        className="w-full h-full rounded-lg flex items-center justify-center overflow-hidden"
         style={cellStyle}
+        className="rounded-lg overflow-hidden"
       >
         {isOccupied && (
-          <div className="text-xs p-1 overflow-hidden text-center leading-none select-none">
-            {event?.isAllDay && <span className="text-[8px] opacity-80 select-none">終日</span>}
-            {event?.isTentative && <span className="text-[8px] opacity-80 select-none">未定</span>}
+          <div className="text-xs p-1 overflow-hidden text-center leading-none select-none w-full">
+            {event?.isAllDay && <span className="text-[8px] opacity-80 select-none block">終日</span>}
+            {event?.isTentative && <span className="text-[8px] opacity-80 select-none block">未定</span>}
             <span className="select-none">{formatEventTitle(event)}</span>
           </div>
         )}
@@ -2139,9 +2142,10 @@ const CalendarTextGenerator = ({
                             style={{ 
                               height: 'var(--cell-height, 24px)',
                               width: 'var(--cell-width, 24px)',
-                              padding: '3px',
+                              padding: '2px',
                               minWidth: 'var(--cell-width, 24px)',
-                              maxWidth: 'var(--cell-width, 24px)'
+                              maxWidth: 'var(--cell-width, 24px)',
+                              boxSizing: 'border-box'
                             }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
@@ -2158,7 +2162,7 @@ const CalendarTextGenerator = ({
                             data-day-index={dayIndex}
                             data-time-index={timeIndex}
                           >
-                            <div className="flex justify-center items-center h-full w-full">
+                            <div className="w-full h-full flex justify-center items-center">
                               {renderEventCell(event, isOccupied, isSelected)}
                             </div>
                           </td>
