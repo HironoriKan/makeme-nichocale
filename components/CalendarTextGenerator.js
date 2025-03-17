@@ -230,15 +230,15 @@ const CalendarTextGenerator = ({
 
   // Touch event handlers
   const handleTouchMove = (e) => {
-    if (!isLongPress) return;
+    if (!isLongPress) return; // 長押し後のみドラッグ選択を許可
     
     if (isDragging && typeof document !== 'undefined') {
+      e.preventDefault(); // スクロールを防止
+      
       const touch = e.touches[0];
       const element = document.elementFromPoint(touch.clientX, touch.clientY);
       
       if (element && element.dataset.dayIndex !== undefined && element.dataset.timeIndex !== undefined) {
-        e.preventDefault();
-        
         const dayIndex = parseInt(element.dataset.dayIndex);
         const timeIndex = parseInt(element.dataset.timeIndex);
         handleCellMouseEnter(dayIndex, timeIndex);
@@ -247,7 +247,19 @@ const CalendarTextGenerator = ({
   };
 
   const handleTouchEnd = () => {
-    handleMouseUp();
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    
+    if (isDragging) {
+      setIsDragging(false);
+      setDragOperation(null);
+      
+      setTimeout(() => {
+        setIsLongPress(false);
+      }, 50);
+    }
   };
 
   // Text generation
@@ -1293,7 +1305,10 @@ const CalendarTextGenerator = ({
                             handleCellMouseDown(dayIndex, timeIndex);
                           }}
                           onMouseEnter={() => isDragging && handleCellMouseEnter(dayIndex, timeIndex)}
-                          onTouchStart={() => handleCellMouseDown(dayIndex, timeIndex)}
+                          onTouchStart={(e) => handleCellTouchStart(dayIndex, timeIndex, e)}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
+                          onTouchCancel={handleTouchEnd}
                           data-day-index={dayIndex}
                           data-time-index={timeIndex}
                         >
@@ -1822,6 +1837,57 @@ const CalendarTextGenerator = ({
     };
   }, []);
 
+  // モバイル向けタッチ操作の改善
+  const handleCellTouchStart = (dayIndex, timeIndex, e) => {
+    // 長押しによる複数選択のためのタイマーを設定
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+    }
+    
+    const timer = setTimeout(() => {
+      // 長押し検出
+      const date = weekDates[dayIndex];
+      if (!date) return;
+      
+      const dateTimeKey = getDateTimeKey(date, timeIndex);
+      const isSelected = selectedDates.includes(dateTimeKey);
+      
+      setIsDragging(true);
+      setIsDragToDeselect(isSelected);
+      setLastSelectedDay(dayIndex);
+      setLastSelectedTime(timeIndex);
+      setIsLongPress(true);
+      
+      // 視覚的フィードバック（振動など）
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50); // 50msの振動フィードバック
+      }
+      
+      // 長押しの場合は選択状態を反転
+      handleCellClick(dayIndex, timeIndex);
+    }, 500); // 500msの長押しで複数選択モードに入る
+    
+    setLongPressTimer(timer);
+  };
+
+  // グローバルなタッチイベント処理を追加
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    
+    // 長押し中のスクロールを防止
+    const preventScroll = (e) => {
+      if (isLongPress && isDragging) {
+        e.preventDefault();
+      }
+    };
+    
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchmove', preventScroll);
+    };
+  }, [isLongPress, isDragging]);
+
   return (
     <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
       minHeight: 'calc(100vh - var(--safe-bottom, 0px))', 
@@ -2015,7 +2081,10 @@ const CalendarTextGenerator = ({
                               handleCellMouseDown(dayIndex, timeIndex);
                             }}
                             onMouseEnter={() => isDragging && handleCellMouseEnter(dayIndex, timeIndex)}
-                            onTouchStart={() => handleCellMouseDown(dayIndex, timeIndex)}
+                            onTouchStart={(e) => handleCellTouchStart(dayIndex, timeIndex, e)}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchCancel={handleTouchEnd}
                             data-day-index={dayIndex}
                             data-time-index={timeIndex}
                           >
