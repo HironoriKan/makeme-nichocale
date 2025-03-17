@@ -1200,17 +1200,16 @@ const CalendarTextGenerator = ({
         const screenWidth = window.innerWidth;
         const timeColumnWidth = 40; // 時間列の幅
         const availableWidth = screenWidth - timeColumnWidth;
-        const cellWidth = availableWidth / 7; // 7日分で割る
         
-        // グリッドの高さを幅に合わせて1:1に設定
-        const gridHeight = Math.min(availableHeight, cellWidth * 14); // 14時間分
+        // 各セルのサイズを計算
+        const cellSize = Math.min(Math.floor(availableWidth / 7), Math.floor(availableHeight / 14));
         
-        // グリッドの高さをCSSカスタムプロパティに設定
+        // セルサイズをCSSカスタムプロパティに設定
+        document.documentElement.style.setProperty('--cell-size', `${cellSize}px`);
+        
+        // グリッドの高さを計算（セルサイズ × 14行）
+        const gridHeight = cellSize * 14;
         document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
-        
-        // セルの高さを設定（グリッドの高さを14時間分で割る）
-        const cellHeight = gridHeight / 14;
-        document.documentElement.style.setProperty('--cell-height', `${cellHeight}px`);
       } catch (error) {
         console.error('Error adjusting heights:', error);
       }
@@ -2056,7 +2055,11 @@ const CalendarTextGenerator = ({
                           <td 
                             key={dayIndex} 
                             className="relative p-1 select-none cursor-pointer"
-                            style={{ height: 'var(--cell-height, 24px)' }}
+                            style={{ 
+                              width: 'var(--cell-size, 40px)', 
+                              height: 'var(--cell-size, 40px)',
+                              padding: '2px'
+                            }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
                               if (!isDragging) {
