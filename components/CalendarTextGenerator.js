@@ -1642,20 +1642,17 @@ const CalendarTextGenerator = ({
             <div style={{ width: 'calc(33% - 8px)', minWidth: '300px', maxWidth: '500px' }} className="flex flex-col gap-4 overflow-hidden">
               {/* 右上：ミニカレンダー */}
               <div className="bg-white rounded-lg p-4 shadow-sm">
-                <h2 className="text-lg font-bold mb-2">カレンダー</h2>
-                <p className="text-sm text-gray-600 mb-2">選択した週間カレンダーを表示します。</p>
-                
                 <div className="flex justify-between items-center mb-4">
-                  <button onClick={previousWeek} className="text-gray-600">&lt;</button>
-                  <span className="font-bold">{`${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月`}</span>
-                  <button onClick={nextWeek} className="text-gray-600">&gt;</button>
+                  <button onClick={previousMonth} className="text-gray-600 hover:bg-gray-100 w-8 h-8 flex items-center justify-center rounded-full">&lt;</button>
+                  <span className="font-bold text-lg">{`${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月`}</span>
+                  <button onClick={nextMonth} className="text-gray-600 hover:bg-gray-100 w-8 h-8 flex items-center justify-center rounded-full">&gt;</button>
                 </div>
                 
                 <table className="w-full">
                   <thead>
                     <tr>
                       {weekdays.map(day => (
-                        <th key={day} className="text-center py-2 text-xs">{day}</th>
+                        <th key={day} className="text-center py-2 text-xs font-medium">{day}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1749,18 +1746,44 @@ const CalendarTextGenerator = ({
       <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
         {Array.from({ length: 7 }).map((_, dayIndex) => {
           const day = days[weekIndex * 7 + dayIndex];
+          
+          // 今日の日付かどうかチェック
+          const isToday = day && 
+            day.getDate() === today.getDate() && 
+            day.getMonth() === today.getMonth() && 
+            day.getFullYear() === today.getFullYear();
+          
           return (
             <td 
               key={dayIndex}
-              className="text-center py-2 text-xs cursor-pointer"
+              className={`text-center py-2 cursor-pointer ${isToday ? 'relative' : ''}`}
               onClick={() => day && setCurrentDate(day)}
             >
-              {day?.getDate() || ''}
+              {day && (
+                <span className={`text-sm inline-flex items-center justify-center ${
+                  isToday ? 'bg-red-400 text-white rounded-full w-7 h-7' : ''
+                }`}>
+                  {day.getDate()}
+                </span>
+              )}
             </td>
           );
         })}
       </tr>
     ));
+  };
+
+  // 月の移動関数を追加
+  const previousMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() - 1);
+    setCurrentDate(newDate);
+  };
+
+  const nextMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + 1);
+    setCurrentDate(newDate);
   };
 
   // グローバルスタイルを追加
