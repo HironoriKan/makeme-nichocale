@@ -587,12 +587,12 @@ const CalendarTextGenerator = ({
           date.getMonth() === eventDate.getMonth() && 
           date.getDate() === eventDate.getDate();
         
-        // 終日予定があっても、チェックが入っていればfalseを返す（選択可能）
+        // 終日予定があり、チェックが入っている場合はtrueを返す（選択不可=表示しない）
         if (isSameDay) {
           if (calendarSettings.allowAllDayEvents) {
-            continue; // 終日予定は無視して次のイベントをチェック
+            return true; // チェックがあれば表示しない（選択不可）
           } else {
-            return true; // チェックがなければ選択不可
+            continue; // チェックがなければ表示する（次のイベントをチェック）
           }
         }
       }
@@ -603,11 +603,11 @@ const CalendarTextGenerator = ({
         const eventEnd = new Date(event.end.dateTime || event.end.date);
         
         if (slotStart < eventEnd && slotEnd > eventStart) {
-          // 未回答予定があっても、チェックが入っていればfalseを返す（選択可能）
+          // 未回答予定があり、チェックが入っている場合はtrueを返す（選択不可=表示しない）
           if (calendarSettings.allowTentativeEvents) {
-            continue; // 未回答予定は無視して次のイベントをチェック
+            return true; // チェックがあれば表示しない（選択不可）
           } else {
-            return true; // チェックがなければ選択不可
+            continue; // チェックがなければ表示する（次のイベントをチェック）
           }
         }
       }
@@ -643,16 +643,16 @@ const CalendarTextGenerator = ({
           date.getMonth() === eventDate.getMonth() && 
           date.getDate() === eventDate.getDate();
         
-        // 終日予定がある日で、チェックされていない場合のみイベントを返す
-        if (isSameDay && !calendarSettings.allowAllDayEvents) {
+        // 終日予定があり、チェックがある場合は表示しない（スキップ）
+        if (isSameDay && calendarSettings.allowAllDayEvents) {
+          continue;
+        }
+        // 終日予定があり、チェックがない場合はイベントを返す（表示する）
+        if (isSameDay) {
           event.isAllDay = true;
           event.isTentative = isTentativeEvent(event);
           event.isSelectable = false;
           return event;
-        }
-        // チェックがついている場合は、この日の終日予定は無視
-        if (isSameDay) {
-          continue;
         }
       }
 
@@ -662,15 +662,15 @@ const CalendarTextGenerator = ({
         const eventEnd = new Date(event.end.dateTime || event.end.date);
         
         if (slotStart < eventEnd && slotEnd > eventStart) {
-          // 未回答予定で、チェックされていない場合のみイベントを返す
-          if (!calendarSettings.allowTentativeEvents) {
-            event.isAllDay = isAllDayEvent(event);
-            event.isTentative = true;
-            event.isSelectable = false;
-            return event;
+          // 未回答予定があり、チェックがある場合は表示しない（スキップ）
+          if (calendarSettings.allowTentativeEvents) {
+            continue;
           }
-          // チェックがついている場合は、この時間の未回答予定は無視
-          continue;
+          // 未回答予定があり、チェックがない場合はイベントを返す（表示する）
+          event.isAllDay = isAllDayEvent(event);
+          event.isTentative = true;
+          event.isSelectable = false;
+          return event;
         }
       }
 
@@ -1104,7 +1104,7 @@ const CalendarTextGenerator = ({
               className="mr-2"
             />
             <label htmlFor="allow-all-day-events" className="text-sm text-gray-800">
-              終日予定がある日も選択できるようにする
+              終日予定がある日を表示しない
             </label>
           </div>
           
@@ -1121,7 +1121,7 @@ const CalendarTextGenerator = ({
               className="mr-2"
             />
             <label htmlFor="allow-tentative-events" className="text-sm text-gray-800">
-              未回答/未定の予定がある時間も選択できるようにする
+              未回答/未定の予定がある時間を表示しない
             </label>
           </div>
           
@@ -1153,11 +1153,13 @@ const CalendarTextGenerator = ({
 
   // イベントがスロットで選択可能かどうかを判定
   const isEventSelectable = (event) => {
-    if (isAllDayEvent(event) && !calendarSettings.allowAllDayEvents) {
+    // 終日予定でチェックがある場合は選択不可
+    if (isAllDayEvent(event) && calendarSettings.allowAllDayEvents) {
       return false;
     }
     
-    if (isTentativeEvent(event) && !calendarSettings.allowTentativeEvents) {
+    // 未回答予定でチェックがある場合は選択不可
+    if (isTentativeEvent(event) && calendarSettings.allowTentativeEvents) {
       return false;
     }
     
