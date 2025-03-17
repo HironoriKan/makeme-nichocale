@@ -996,29 +996,26 @@ const CalendarTextGenerator = ({
     }
   };
 
-  // ビューポートの高さを設定するスクリプトを追加
+  // useEffect for viewport height - 適切なグリッド高さ計算
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     
     const setVH = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-      
-      // iPhoneの場合は安全マージンを追加
-      if (typeof navigator !== 'undefined' && /iPhone/.test(navigator.userAgent)) {
-        document.documentElement.style.setProperty('--safe-bottom', '20px');
+      // セーフエリアの設定
+      const safeBottom = window.innerHeight - document.documentElement.clientHeight;
+      if (safeBottom > 0) {
+        document.documentElement.style.setProperty('--safe-bottom', `${safeBottom}px`);
       } else {
         document.documentElement.style.setProperty('--safe-bottom', '0px');
       }
-
-      // 各セクションの高さを計算
-      // 固定高さの要素を取得
-      const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
-      const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
-      const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 100; // テキストエリアの高さを増加
-      const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
-      const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
+      
+      // 各セクションの高さを設定（DOM要素の代わりに固定値を使用して安定性を向上）
+      const headerHeight = 48; // ヘッダーの固定高さ
+      const navHeight = 48; // ナビゲーションバーの固定高さ
+      const calendarHeaderHeight = 50; // カレンダーヘッダーの固定高さ
+      const textAreaHeight = 110; // テキストエリアの固定高さ
+      const buttonAreaHeight = 60; // ボタンエリアの固定高さ
+      const footerHeight = 20; // 下部スペースの固定高さ
       
       // 固定要素の合計高さ
       const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
@@ -1026,17 +1023,9 @@ const CalendarTextGenerator = ({
       // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
-      // グリッドの高さを設定（全体の30%程度に縮小、17:00までが表示されるようにする）
-      const gridHeight = Math.max(200, availableHeight * 0.3); // 60%から30%に変更
+      // グリッドの高さを設定（全体の最適な高さを確保）
+      const gridHeight = Math.max(280, Math.min(availableHeight, 340));
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
-      
-      // コンソールに高さ情報を出力（デバッグ用）
-      console.log('Grid height calculation:', {
-        windowHeight: window.innerHeight,
-        fixedHeight,
-        availableHeight,
-        gridHeight
-      });
     };
 
     // 初期設定
@@ -1425,11 +1414,9 @@ const CalendarTextGenerator = ({
       const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
       const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
       const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      
-      // テキストエリアと下部領域の固定高さを使用
-      const textAreaHeight = 110; // 修正：固定値を使用
-      const buttonAreaHeight = 60;
-      const footerHeight = 20;
+      const textAreaHeight = document.querySelector('.text-area')?.offsetHeight || 100; // テキストエリアの高さを増加
+      const buttonAreaHeight = document.querySelector('.button-area')?.offsetHeight || 60;
+      const footerHeight = document.querySelector('.footer-area')?.offsetHeight || 50;
       
       // 固定要素の合計高さ
       const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
@@ -1437,9 +1424,17 @@ const CalendarTextGenerator = ({
       // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
-      // グリッドの高さを設定（8:00〜17:00程度が表示される高さ = 9時間分）
-      const gridHeight = Math.max(300, Math.min(availableHeight, 340));
+      // グリッドの高さを設定（全体の30%程度に縮小、17:00までが表示されるようにする）
+      const gridHeight = Math.max(200, availableHeight * 0.3); // 60%から30%に変更
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
+      
+      // コンソールに高さ情報を出力（デバッグ用）
+      console.log('Grid height calculation:', {
+        windowHeight: window.innerHeight,
+        fixedHeight,
+        availableHeight,
+        gridHeight
+      });
     };
 
     // 初期設定
@@ -1450,10 +1445,14 @@ const CalendarTextGenerator = ({
     window.addEventListener('orientationchange', () => {
       setTimeout(setVH, 100);
     });
+    window.addEventListener('scroll', () => {
+      setTimeout(setVH, 100);
+    });
 
     return () => {
       window.removeEventListener('resize', setVH);
       window.removeEventListener('orientationchange', setVH);
+      window.removeEventListener('scroll', setVH);
     };
   }, []);
 
@@ -1933,7 +1932,7 @@ const CalendarTextGenerator = ({
     const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
       return Array.from({ length: 7 }).some((_, dayIndex) => {
         const day = days[weekIndex * 7 + dayIndex];
-        return day && weekDates && weekDates.some(date => 
+        return day && weekDates.some(date => 
           date && day && date.getDate() === day.getDate() &&
           date.getMonth() === day.getMonth() &&
           date.getFullYear() === day.getFullYear()
