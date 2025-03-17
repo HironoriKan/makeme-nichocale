@@ -1374,7 +1374,7 @@ const CalendarTextGenerator = ({
   const renderDesktopLayout = () => {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1500px] mx-auto">
           {/* ヘッダー */}
           <div className="mb-4 flex justify-between items-center">
             <h1 className="text-2xl font-bold">カレンダー日程調整</h1>
@@ -1422,7 +1422,7 @@ const CalendarTextGenerator = ({
           {/* メインコンテンツ */}
           <div className="flex flex-row gap-4" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
             {/* 左側：カレンダーグリッド */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex-1">
+            <div className="bg-white rounded-lg shadow-sm p-4" style={{ width: 'calc(67% - 8px)', minWidth: '600px', maxWidth: '1000px' }}>
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xl font-bold">
                   {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
@@ -1622,7 +1622,7 @@ const CalendarTextGenerator = ({
             </div>
 
             {/* 右側：ミニカレンダーと日程候補 */}
-            <div className="w-[300px] flex flex-col gap-4">
+            <div style={{ width: 'calc(33% - 8px)', minWidth: '300px', maxWidth: '500px' }} className="flex flex-col gap-4">
               {/* 右上：ミニカレンダー */}
               <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h2 className="text-lg font-bold mb-2">カレンダー</h2>
