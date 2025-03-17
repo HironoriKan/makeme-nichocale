@@ -996,7 +996,7 @@ const CalendarTextGenerator = ({
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
       // グリッドの高さを設定（全体の60%程度）
-      const gridHeight = Math.max(200, availableHeight * 0.4); // 最低200pxを確保
+      const gridHeight = Math.max(200, availableHeight * 0.3); // 最低200pxを確保
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
       
       // コンソールに高さ情報を出力（デバッグ用）
@@ -1420,7 +1420,7 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* メインコンテンツ */}
-          <div className="flex flex-row gap-4 h-[calc(100vh-150px)]">
+          <div className="flex flex-row gap-4" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
             {/* 左側：カレンダーグリッド */}
             <div className="bg-white rounded-lg shadow-sm p-4 flex-1">
               <div className="flex justify-between items-center mb-4">
@@ -1552,7 +1552,7 @@ const CalendarTextGenerator = ({
               )}
 
               {/* カレンダーのグリッド */}
-              <div className="overflow-auto h-[calc(100%-60px)]">
+              <div className="overflow-auto h-[calc(100%-60px)]" style={{ minHeight: '400px' }}>
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
@@ -1594,7 +1594,7 @@ const CalendarTextGenerator = ({
                               onClick={() => handleCellClick(dayIndex, timeIndex)}
                             >
                               <div 
-                                className={`h-10 rounded flex items-center justify-center ${
+                                className={`h-8 rounded flex items-center justify-center ${
                                   isOccupied ? 'bg-gray-200' :
                                   isSelected ? 'bg-red-300' : 'bg-red-50'
                                 }`}
@@ -1654,7 +1654,7 @@ const CalendarTextGenerator = ({
                 <p className="text-sm text-gray-600 mb-4">カレンダーで選んだ日時を出力します。</p>
                 <div 
                   className="bg-gray-50 p-3 rounded min-h-[100px] mb-4 text-sm whitespace-pre-wrap overflow-auto"
-                  style={{ maxHeight: 'calc(100% - 150px)' }}
+                  style={{ height: '200px' }}
                   ref={textAreaRef}
                   contentEditable={true}
                   onFocus={() => setIsTextAreaFocused(true)}
