@@ -151,6 +151,11 @@ const CalendarTextGenerator = ({
 
   // Cell interaction handlers
   const handleCellClick = (dayIndex, timeIndex) => {
+    // ドラッグ終了直後はクリックイベントを無視する（ドラッグの終了として扱う）
+    if (isDragging) {
+      return;
+    }
+    
     const date = weekDates[dayIndex];
     if (!date) return;
     
@@ -169,31 +174,27 @@ const CalendarTextGenerator = ({
     
     setSelectedDates(newSelection);
     setGeneratedText(generateText(newSelection));
+    
+    // デバッグ用ログ
+    console.log('Cell clicked:', { dayIndex, timeIndex, isSelected: existingIndex === -1 });
   };
 
   const handleCellMouseDown = (dayIndex, timeIndex, e) => {
-    // デフォルトの選択動作を防止
-    e.preventDefault();
-    if (window.getSelection) {
-      window.getSelection().removeAllRanges();
-    }
-    
+    // 既に選択されているかどうかを確認
     const date = weekDates[dayIndex];
     if (!date) return;
     
-    // ドラッグ操作の初期設定
     const dateTimeKey = getDateTimeKey(date, timeIndex);
     const isSelected = selectedDates.includes(dateTimeKey);
     
+    // ドラッグ開始状態を設定
     setIsDragging(true);
     setIsDragToDeselect(isSelected);
     setDragStartCell({ dayIndex, timeIndex });
     setLastDraggedCell({ dayIndex, timeIndex });
     
-    // 最初のセルをクリックした時点で選択/選択解除
-    handleCellClick(dayIndex, timeIndex);
-    
-    console.log('Drag started', { dayIndex, timeIndex, isSelected });
+    // マウスダウン時に選択/選択解除は行わない（クリックイベントに任せる）
+    // これにより、クリック時の動作がより自然になる
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
@@ -244,22 +245,22 @@ const CalendarTextGenerator = ({
 
   // Touch event handlers
   const handleCellTouchStart = (dayIndex, timeIndex, e) => {
+    // クリック同様のタップ処理を実装
+    const date = weekDates[dayIndex];
+    if (!date) return;
+    
     // 長押しによる複数選択のためのタイマーを設定
     if (longPressTimer) {
       clearTimeout(longPressTimer);
     }
     
     const timer = setTimeout(() => {
-      // 長押し検出
-      const date = weekDates[dayIndex];
-      if (!date) return;
-      
+      // 長押し検出（複数選択モード）
       const dateTimeKey = getDateTimeKey(date, timeIndex);
       const isSelected = selectedDates.includes(dateTimeKey);
       
       setIsDragging(true);
       setIsDragToDeselect(isSelected);
-      // lastSelectedDay/Timeが使用されている場合は、dragStartCellを使用するように修正
       setDragStartCell({ dayIndex, timeIndex });
       setLastDraggedCell({ dayIndex, timeIndex });
       setIsLongPress(true);
@@ -269,13 +270,30 @@ const CalendarTextGenerator = ({
         navigator.vibrate(50); // 50msの振動フィードバック
       }
       
-      // 長押しの場合は選択状態を反転
-      handleCellClick(dayIndex, timeIndex);
+      console.log('Long press detected:', { dayIndex, timeIndex });
     }, 500); // 500msの長押しで複数選択モードに入る
     
     setLongPressTimer(timer);
   };
+  
+  // 通常のタップ終了（長押しではない）
+  const handleCellTouchEnd = (dayIndex, timeIndex, e) => {
+    // 長押しタイマーをクリア
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    
+    // 長押しフラグがセットされていない場合は、通常のタップとして処理
+    if (!isLongPress) {
+      handleCellClick(dayIndex, timeIndex);
+    }
+    
+    // 長押し状態をリセット
+    setIsLongPress(false);
+  };
 
+  // タッチムーブイベント - ドラッグ選択用
   const handleTouchMove = (e) => {
     if (!isLongPress) return; // 長押し後のみドラッグ選択を許可
     
@@ -301,6 +319,7 @@ const CalendarTextGenerator = ({
     }
   };
 
+  // ドキュメントレベルのタッチ終了イベント
   const handleTouchEnd = () => {
     if (longPressTimer) {
       clearTimeout(longPressTimer);
@@ -1212,400 +1231,189 @@ const CalendarTextGenerator = ({
   // モバイル用のレイアウト
   const renderMobileLayout = () => {
     return (
-      <div className="relative flex flex-col w-full sm:max-w-lg h-full" style={{maxWidth: '100%'}}>
-        {/* ①画面のヘッダー：高さ固定 */}
-        <div className="app-header bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
-          style={{ height: 'auto', minHeight: '48px' }}>
-          {/* 左側：アプリタイトル */}
-          <div className="text-sm sm:text-base font-bold text-gray-800">
-            メイクミー日程調整
-          </div>
-          
-          {/* 右側：ログインボタンまたはユーザー情報 */}
-          <div className="flex items-center space-x-2">
-            {/* ログイン/ユーザー情報 */}
-            {isAuthenticated ? (
-              <div className="flex items-center">
-                {userInfo?.photos?.[0]?.url && (
-                  <img
-                    src={userInfo.photos[0].url}
-                    alt="ユーザー"
-                    className="h-7 w-7 rounded-full cursor-pointer"
-                    onClick={handleLogout}
-                    title="ログアウト"
-                  />
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={handleLogin}
-                disabled={isLoading || !isApiInitialized}
-                className="flex items-center justify-center rounded-full bg-red-400 text-white w-8 h-8 focus:outline-none"
-                title="Googleでログイン"
-              >
-                {isLoading ? (
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" fill="#ffffff"/>
-                  </svg>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* ②ナビゲーションバー：高さ固定 */}
-        <div className="nav-header bg-white p-2 sm:p-3 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
-          {/* 左端：月表示と選択ボタン */}
-          <div className="flex items-center relative w-1/3 justify-start">
-            <button 
-              onClick={() => {
-                setShowCalendarPopup(!showCalendarPopup);
-                setPopupMonth(new Date(currentDate));
-              }}
-              className="flex items-center p-1 rounded"
-            >
-              <span className="text-sm sm:text-base font-bold">
-                {weekDates.length > 0 ? `${weekDates[0].getMonth() + 1}月` : ''}
-              </span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4 ml-1">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            
-            {renderCalendarPopup()}
-          </div>
-          
-          {/* 中央：ナビゲーションボタン */}
-          <div className="flex items-center justify-center w-1/3">
-            <div className="flex items-center space-x-1 sm:space-x-3">
-              <button onClick={previousWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&lt;</button>
-              <button onClick={goToToday} className="px-3 py-1 text-gray-600 text-sm font-bold rounded-full whitespace-nowrap min-w-[60px]">今日</button>
-              <button onClick={nextWeek} className="w-9 h-9 flex items-center justify-center text-gray-600 text-lg rounded-full">&gt;</button>
+      <div className="min-h-screen overflow-hidden bg-white">
+        {/* ヘッダー */}
+        <div className="app-header bg-white border-b p-3 fixed top-0 left-0 right-0 z-20">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-bold">メイクミー日程調整</h1>
+            <div className="flex items-center space-x-2">
+              {isAuthenticated ? (
+                <div className="flex items-center">
+                  {userInfo?.photos?.[0]?.url && (
+                    <img
+                      src={userInfo.photos[0].url}
+                      alt="User"
+                      className="h-8 w-8 rounded-full cursor-pointer"
+                      onClick={handleLogout}
+                      title="ログアウト"
+                    />
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={handleLogin}
+                  disabled={isLoading || !isApiInitialized}
+                  className="flex items-center justify-center rounded-full bg-red-400 text-white w-8 h-8 focus:outline-none"
+                  title="Googleでログイン"
+                >
+                  {isLoading ? (
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" fill="#ffffff"/>
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
           </div>
-          
-          {/* 右端：設定アイコン */}
-          <div className="flex items-center w-1/3 justify-end">
-            {isAuthenticated && (
-              <button
-                onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                className="flex items-center justify-center rounded-full text-gray-600 w-10 h-10 focus:outline-none"
-                title="カレンダー設定"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* 設定ポップアップ */}
-          {renderSettingsPopup()}
         </div>
-        
-        {/* ③カレンダーの日付と曜日のヘッダー：高さ固定 */}
-        <div className="calendar-header flex-shrink-0" style={{ height: 'auto', minHeight: '50px' }}>
-          <table className="w-full border-collapse table-fixed" style={{ margin: '2px 0' }}>
-            <thead>
-              <tr className="border-b-[2px] border-white">
-                <th className="w-[40px] sm:w-[50px] p-0"></th>
-                {weekdays.map((weekday, index) => {
-                  const date = weekDates[index];
-                  const isToday = date && 
-                    date.getDate() === today.getDate() && 
-                    date.getMonth() === today.getMonth() && 
-                    date.getFullYear() === today.getFullYear();
-                  
-                  return (
-                    <th key={index} className="p-0 text-center border-l-[2px] border-r-[2px] border-white">
-                      <div className="text-[10px] sm:text-xs text-gray-500">{weekday}</div>
-                      <div style={{ marginTop: '1px' }} className="flex justify-center">
-                        <div className={`text-sm sm:text-base font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center mx-auto' : ''}`}>
-                          {date ? date.getDate() : ''}
+
+        {/* ナビゲーションヘッダー */}
+        <div className="nav-header fixed top-[48px] left-0 right-0 z-10 bg-white border-b">
+          <div className="flex justify-between items-center p-3">
+            <div className="text-lg font-semibold">
+              {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
+            </div>
+            <div className="flex space-x-4 items-center">
+              <button onClick={previousWeek} className="text-gray-600 text-lg">&lt;</button>
+              <button onClick={goToToday} className="px-3 py-1 text-xs bg-gray-100 rounded">
+                今日
+              </button>
+              <button onClick={nextWeek} className="text-gray-600 text-lg">&gt;</button>
+            </div>
+          </div>
+        </div>
+
+        {/* カレンダーヘッダー (曜日) */}
+        <div className="calendar-header fixed top-[96px] left-0 right-0 z-10 bg-white border-b">
+          <div className="grid grid-cols-7 text-center py-3">
+            {weekdays.map((weekday, index) => {
+              const date = weekDates[index];
+              const isToday = date && 
+                date.getDate() === today.getDate() && 
+                date.getMonth() === today.getMonth() && 
+                date.getFullYear() === today.getFullYear();
+              
+              return (
+                <div key={index} className="text-center">
+                  <div className="text-xs text-gray-500">{weekday}</div>
+                  <div className={`text-base font-semibold ${isToday ? 'bg-red-400 text-white rounded-full w-7 h-7 flex items-center justify-center mx-auto' : ''}`}>
+                    {date ? date.getDate() : ''}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* カレンダーグリッド - モバイル最適化 */}
+        <div 
+          className="pt-[146px] overflow-y-auto"
+          style={{ height: 'calc(var(--vh, 1vh) * 100)', overflowY: 'auto' }}
+        >
+          <div className="grid-container" style={{ height: 'var(--grid-height, 340px)' }}>
+            <div className="grid grid-cols-7 text-center">
+              {timeSlots.map((time, timeIndex) => (
+                <React.Fragment key={timeIndex}>
+                  <div className="text-right pr-1 text-xs text-gray-500 border-r border-t py-1">
+                    {time}
+                  </div>
+                  {weekdays.map((_, dayIndex) => {
+                    const date = weekDates[dayIndex];
+                    const event = date && getEventForTimeSlot(date, timeIndex + 8);
+                    const isOccupied = !!event;
+                    const isSelected = getSelectedSlots()[dayIndex][timeIndex];
+                    
+                    return (
+                      <div
+                        key={dayIndex}
+                        className="border-t py-1 relative h-10"
+                        onTouchStart={(e) => handleCellTouchStart(dayIndex, timeIndex, e)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={() => handleCellTouchEnd(dayIndex, timeIndex)}
+                        onClick={(e) => {
+                          // タッチ操作の場合はhandleCellTouchEndに任せる
+                          if (e.nativeEvent.pointerType !== 'touch') {
+                            handleCellClick(dayIndex, timeIndex);
+                          }
+                        }}
+                        data-day-index={dayIndex}
+                        data-time-index={timeIndex}
+                      >
+                        <div 
+                          className={`absolute inset-0.5 rounded-sm ${
+                            isOccupied ? 'bg-gray-200' :
+                            isSelected ? 'bg-red-300' : 'bg-red-50'
+                          }`}
+                          style={{ 
+                            backgroundColor: isOccupied ? getEventColor(event) : (isSelected ? '#FDA4AF' : '#FEE2E2'),
+                            opacity: isOccupied ? (event?.isAllDay ? 0.6 : event?.isTentative ? 0.5 : 0.7) : 1
+                          }}
+                        >
+                          {isOccupied && (
+                            <div className="text-[9px] text-white truncate p-0.5 leading-none">
+                              {event?.isAllDay && <span className="text-[7px] opacity-80">終日</span>}
+                              {event?.isTentative && <span className="text-[7px] opacity-80">未定</span>}
+                              <span>{formatEventTitle(event)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-          </table>
-        </div>
-        
-        {/* ④カレンダーグリッド（内部スクロール、8:00-17:00までを表示し、それ以降はスクロールで見れる） */}
-        <div className="calendar-grid overflow-auto flex-1" style={{ height: 'var(--grid-height, 340px)', maxHeight: '340px' }}>
-          <div className="relative">
-            {/* Current time indicator */}
-            {currentTimePosition >= 0 && (
-              <>
-                <div 
-                  className="absolute z-10 pointer-events-none" 
-                  style={{ 
-                    top: `${currentTimePosition}px`, 
-                    left: 0, 
-                    right: 0, 
-                    height: '1px', 
-                    backgroundColor: '#E11D48' 
-                  }}
-                />
-                <div 
-                  className="absolute z-10 pointer-events-none"
-                  style={{ 
-                    top: `${currentTimePosition - 5}px`, 
-                    left: '32px',
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: '#E11D48' 
-                  }}
-                />
-              </>
-            )}
-
-            <table className="w-full border-collapse table-fixed">
-              <tbody>
-                {timeSlots.map((time, timeIndex) => (
-                  <tr key={timeIndex}>
-                    <td className="p-1 text-xs sm:text-sm text-gray-500 text-right w-[40px] sm:w-[50px]">
-                      {time}
-                    </td>
-                    {weekdays.map((_, dayIndex) => {
-                      const date = weekDates[dayIndex];
-                      const event = date && getEventForTimeSlot(date, timeIndex + 8);
-                      const isOccupied = !!event;
-                      const isSelected = getSelectedSlots()[dayIndex][timeIndex];
-                      
-                      return (
-                        <td 
-                          key={dayIndex} 
-                          className="relative p-0 border-l-[2px] border-r-[2px] border-white select-none cursor-pointer"
-                          onClick={(e) => {
-                            // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
-                            if (!isDragging) {
-                              handleCellClick(dayIndex, timeIndex);
-                            }
-                          }}
-                          onMouseDown={(e) => handleCellMouseDown(dayIndex, timeIndex, e)}
-                          onMouseEnter={() => handleCellMouseEnter(dayIndex, timeIndex)}
-                          onTouchStart={(e) => handleCellTouchStart(dayIndex, timeIndex, e)}
-                          onTouchMove={handleTouchMove}
-                          onTouchEnd={handleTouchEnd}
-                          onTouchCancel={handleTouchEnd}
-                          data-day-index={dayIndex}
-                          data-time-index={timeIndex}
-                        >
-                          <div className="flex justify-center py-0.5">
-                            {renderEventCell(event, isOccupied, isSelected)}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
-        </div>
-        
-        {/* ⑤テキスト反映エリア（内部スクロール） */}
-        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '110px' }}>
-          <div className="bg-white h-full overflow-auto">
-            <div
-              className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[90px]"
+
+          {/* テキストエリアとボタン */}
+          <div className="text-area px-4 py-3" style={{ height: '110px' }}>
+            <div 
+              className="bg-gray-50 p-2 rounded h-full text-sm overflow-auto"
               ref={textAreaRef}
-              contentEditable={typeof window !== 'undefined' && !isMobileDevice()}
+              contentEditable={true}
               onFocus={() => setIsTextAreaFocused(true)}
               onBlur={() => setIsTextAreaFocused(false)}
               onInput={handleTextAreaChange}
-              onClick={typeof window !== 'undefined' && isMobileDevice() ? (() => {
-                // スマホで空の状態でタップした場合は、何もしない
-                if (!generatedText) return;
-                
-                if (typeof window !== 'undefined') {
-                  setTimeout(() => {
-                    window.scrollTo({
-                      top: 0,
-                      behavior: 'smooth'
-                    });
-                  }, 100);
-                }
-              }) : undefined}
-              style={{ 
-                fontSize: '14px',
-                backgroundColor: isTextAreaFocused ? '#f8f8f8' : 'white',
-                userSelect: typeof window !== 'undefined' && isMobileDevice() ? 'none' : 'text',
-                WebkitUserSelect: typeof window !== 'undefined' && isMobileDevice() ? 'none' : 'text',
-                MozUserSelect: typeof window !== 'undefined' && isMobileDevice() ? 'none' : 'text',
-                msUserSelect: typeof window !== 'undefined' && isMobileDevice() ? 'none' : 'text',
-                cursor: typeof window !== 'undefined' && isMobileDevice() ? 'default' : 'text'
-              }}
             >
-              {generatedText ? (
-                generatedText.split('\n').map((line, index) => (
-                  <div key={index} className="text-sm sm:text-base">{line}</div>
-                ))
-              ) : (
-                <div className="text-gray-400 text-sm sm:text-base">
-                  カレンダーで選択した日時が、自動で入力されます。
-                  {typeof window !== 'undefined' && isMobileDevice() && <div className="mt-1 text-xs">※モバイル版では編集できません</div>}
-                </div>
-              )}
+              {generatedText ? generatedText.split('\n').map((line, i) => (
+                <div key={i}>{line}</div>
+              )) : <div className="text-gray-400">カレンダーで選択した日時が、自動で入力されます。</div>}
             </div>
           </div>
-        </div>
-        
-        {/* ⑥CTAボタン：高さ固定 */}
-        <div className="button-area flex-shrink-0 flex justify-center py-2 sm:py-3 bg-white" style={{ height: '60px' }}>
-          <div className="flex space-x-4 sm:space-x-6">
-            <button 
-              onClick={resetSelection}
-              className="px-4 sm:px-8 py-1 sm:py-2 bg-gray-300 text-gray-700 rounded-full text-xs sm:text-sm font-bold"
-            >
-              リセット
-            </button>
-            
-            <button 
-              onClick={copyToClipboard}
-              className="px-4 sm:px-8 py-1 sm:py-2 bg-red-400 text-white rounded-full text-xs sm:text-sm font-bold"
-              disabled={!generatedText}
-            >
-              文字をコピー
-            </button>
+
+          {/* ボタンエリア */}
+          <div className="button-area px-4 py-3 bg-white" style={{ height: '60px' }}>
+            <div className="flex space-x-3">
+              <button 
+                onClick={copyToClipboard} 
+                disabled={!generatedText}
+                className="flex-1 py-2 bg-red-400 text-white rounded-full text-sm font-bold disabled:opacity-50"
+              >
+                文字をコピー
+              </button>
+              <button 
+                onClick={resetSelection}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-full text-sm font-bold"
+              >
+                リセット
+              </button>
+            </div>
           </div>
+          
+          {/* 追加の下部スペース */}
+          <div className="footer-space" style={{ height: '20px' }}></div>
         </div>
-        
-        {/* ⑦下部スペース */}
-        <div className="footer-space flex-shrink-0 h-[20px]"></div>
+
+        {/* ミニカレンダーのポップアップ */}
+        {showMiniCalendar && renderMiniCalendar()}
       </div>
     );
   };
-
-  // ミニカレンダーの本体部分をレンダリングする関数
-  const renderMiniCalendarBody = () => {
-    if (!currentDate) return null;
-    
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    
-    let firstDayOfWeek = firstDay.getDay();
-    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    
-    const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
-    const days = [];
-    
-    for (let i = 0; i < weeks * 7; i++) {
-      const dayNumber = i - firstDayOfWeek + 1;
-      if (dayNumber < 1 || dayNumber > daysInMonth) {
-        days.push(null);
-      } else {
-        days.push(new Date(year, month, dayNumber));
-      }
-    }
-
-    const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
-      return Array.from({ length: 7 }).some((_, dayIndex) => {
-        const day = days[weekIndex * 7 + dayIndex];
-        return day && weekDates.some(date => 
-          date && day && date.getDate() === day.getDate() &&
-          date.getMonth() === day.getMonth() &&
-          date.getFullYear() === day.getFullYear()
-        );
-      });
-    });
-
-    return Array.from({ length: weeks }).map((_, weekIndex) => (
-      <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
-        {Array.from({ length: 7 }).map((_, dayIndex) => {
-          const day = days[weekIndex * 7 + dayIndex];
-          
-          // 今日の日付かどうかチェック
-          const isToday = day && 
-            day.getDate() === today.getDate() && 
-            day.getMonth() === today.getMonth() && 
-            day.getFullYear() === today.getFullYear();
-          
-          return (
-            <td 
-              key={dayIndex}
-              className={`text-center py-2 cursor-pointer w-[14.28%] ${isToday ? 'relative' : ''}`}
-              onClick={() => day && setCurrentDate(day)}
-            >
-              {day && (
-                <span className={`text-sm inline-flex items-center justify-center ${
-                  isToday ? 'bg-red-400 text-white rounded-full w-7 h-7' : ''
-                }`}>
-                  {day.getDate()}
-                </span>
-              )}
-            </td>
-          );
-        })}
-      </tr>
-    ));
-  };
-
-  // 月の移動関数を追加
-  const previousMonth = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() - 1);
-    setCurrentDate(newDate);
-  };
-
-  const nextMonth = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + 1);
-    setCurrentDate(newDate);
-  };
-
-  // グローバルスタイルを追加
-  useEffect(() => {
-    // ドラッグ操作中のテキスト選択を防止するCSSを追加
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .select-none {
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-      }
-      body.dragging {
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // ドラッグ中にbodyにクラスを追加/削除する
-    const handleDragStart = () => document.body.classList.add('dragging');
-    const handleDragEnd = () => {
-      document.body.classList.remove('dragging');
-      // handleMouseUpは削除（グローバルイベントリスナーで処理するため）
-    };
-
-    // グローバルイベントリスナーを設定（ドラッグ操作のための基本設定）
-    window.addEventListener('mousedown', handleDragStart);
-    window.addEventListener('mouseup', handleDragEnd);
-    
-    // デスクトップの場合、ドキュメント外でマウスを離した場合のフォールバック処理はグローバルイベントリスナーに統合
-
-    return () => {
-      document.head.removeChild(style);
-      window.removeEventListener('mousedown', handleDragStart);
-      window.removeEventListener('mouseup', handleDragEnd);
-      // document.removeEventListener('mouseleave', handleMouseUp); - 不要なため削除
-    };
-  }, []);
 
   // デスクトップ用のレイアウト
   const renderDesktopLayout = () => {
@@ -1936,6 +1744,86 @@ const CalendarTextGenerator = ({
         </div>
       </div>
     );
+  };
+
+  // ミニカレンダーの本体部分をレンダリングする関数
+  const renderMiniCalendarBody = () => {
+    if (!currentDate) return null;
+    
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    let firstDayOfWeek = firstDay.getDay();
+    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    
+    const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+    const days = [];
+    
+    for (let i = 0; i < weeks * 7; i++) {
+      const dayNumber = i - firstDayOfWeek + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) {
+        days.push(null);
+      } else {
+        days.push(new Date(year, month, dayNumber));
+      }
+    }
+
+    const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
+      return Array.from({ length: 7 }).some((_, dayIndex) => {
+        const day = days[weekIndex * 7 + dayIndex];
+        return day && weekDates.some(date => 
+          date && day && date.getDate() === day.getDate() &&
+          date.getMonth() === day.getMonth() &&
+          date.getFullYear() === day.getFullYear()
+        );
+      });
+    });
+
+    return Array.from({ length: weeks }).map((_, weekIndex) => (
+      <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
+        {Array.from({ length: 7 }).map((_, dayIndex) => {
+          const day = days[weekIndex * 7 + dayIndex];
+          
+          // 今日の日付かどうかチェック
+          const isToday = day && 
+            day.getDate() === today.getDate() && 
+            day.getMonth() === today.getMonth() && 
+            day.getFullYear() === today.getFullYear();
+          
+          return (
+            <td 
+              key={dayIndex}
+              className={`text-center py-2 cursor-pointer w-[14.28%] ${isToday ? 'relative' : ''}`}
+              onClick={() => day && setCurrentDate(day)}
+            >
+              {day && (
+                <span className={`text-sm inline-flex items-center justify-center ${
+                  isToday ? 'bg-red-400 text-white rounded-full w-7 h-7' : ''
+                }`}>
+                  {day.getDate()}
+                </span>
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    ));
+  };
+
+  // 月の移動関数を追加
+  const previousMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() - 1);
+    setCurrentDate(newDate);
+  };
+
+  const nextMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + 1);
+    setCurrentDate(newDate);
   };
 
   return (
