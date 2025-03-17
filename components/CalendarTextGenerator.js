@@ -996,7 +996,7 @@ const CalendarTextGenerator = ({
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
       // グリッドの高さを設定（全体の60%程度）
-      const gridHeight = Math.max(200, availableHeight * 0.5); // 最低200pxを確保
+      const gridHeight = Math.max(200, availableHeight * 0.4); // 最低200pxを確保
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
       
       // コンソールに高さ情報を出力（デバッグ用）
@@ -1419,13 +1419,13 @@ const CalendarTextGenerator = ({
             </div>
           </div>
           
-          {/* 主要コンテンツ - 2カラムレイアウト */}
-          <div className="grid grid-cols-[1fr_300px] gap-4">
+          {/* メインコンテンツ */}
+          <div className="flex flex-row gap-4 h-[calc(100vh-150px)]">
             {/* 左側：カレンダーグリッド */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="bg-white rounded-lg shadow-sm p-4 flex-1">
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xl font-bold">
-                  {weekDates.length > 0 ? weekDates[0].toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' }) : ''}
+                  {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
                 </div>
                 
                 <div className="flex items-center space-x-4">
@@ -1460,6 +1460,7 @@ const CalendarTextGenerator = ({
                     overflowY: 'auto'
                   }}
                 >
+                  {/* 設定ポップアップの内容は既存のままで問題なし */}
                   <div className="font-bold mb-2 pb-2 border-b border-gray-200">カレンダー設定</div>
                   
                   <div className="text-sm text-gray-700 mb-2">表示するカレンダーを選択</div>
@@ -1551,7 +1552,7 @@ const CalendarTextGenerator = ({
               )}
 
               {/* カレンダーのグリッド */}
-              <div className="overflow-auto">
+              <div className="overflow-auto h-[calc(100%-60px)]">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
@@ -1621,16 +1622,39 @@ const CalendarTextGenerator = ({
             </div>
 
             {/* 右側：ミニカレンダーと日程候補 */}
-            <div className="space-y-4">
+            <div className="w-[300px] flex flex-col gap-4">
               {/* 右上：ミニカレンダー */}
-              {renderMiniCalendar()}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h2 className="text-lg font-bold mb-2">カレンダー</h2>
+                <p className="text-sm text-gray-600 mb-2">選択した週間カレンダーを表示します。</p>
+                
+                <div className="flex justify-between items-center mb-4">
+                  <button onClick={previousWeek} className="text-gray-600">&lt;</button>
+                  <span className="font-bold">{`${currentDate.getFullYear()}年 ${currentDate.getMonth() + 1}月`}</span>
+                  <button onClick={nextWeek} className="text-gray-600">&gt;</button>
+                </div>
+                
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      {weekdays.map(day => (
+                        <th key={day} className="text-center py-2 text-xs">{day}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {renderMiniCalendarBody()}
+                  </tbody>
+                </table>
+              </div>
 
               {/* 右下：日程候補の出力 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="bg-white rounded-lg p-4 shadow-sm flex-1">
                 <h2 className="text-lg font-bold mb-2">日程候補の作成</h2>
                 <p className="text-sm text-gray-600 mb-4">カレンダーで選んだ日時を出力します。</p>
                 <div 
-                  className="bg-gray-50 p-3 rounded min-h-[100px] mb-4 text-sm whitespace-pre-wrap"
+                  className="bg-gray-50 p-3 rounded min-h-[100px] mb-4 text-sm whitespace-pre-wrap overflow-auto"
+                  style={{ maxHeight: 'calc(100% - 150px)' }}
                   ref={textAreaRef}
                   contentEditable={true}
                   onFocus={() => setIsTextAreaFocused(true)}
@@ -1668,6 +1692,58 @@ const CalendarTextGenerator = ({
         </div>
       </div>
     );
+  };
+
+  // ミニカレンダーの本体部分をレンダリングする関数
+  const renderMiniCalendarBody = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    let firstDayOfWeek = firstDay.getDay();
+    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    
+    const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+    const days = [];
+    
+    for (let i = 0; i < weeks * 7; i++) {
+      const dayNumber = i - firstDayOfWeek + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) {
+        days.push(null);
+      } else {
+        days.push(new Date(year, month, dayNumber));
+      }
+    }
+
+    const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
+      return Array.from({ length: 7 }).some((_, dayIndex) => {
+        const day = days[weekIndex * 7 + dayIndex];
+        return day && weekDates.some(date => 
+          date.getDate() === day.getDate() &&
+          date.getMonth() === day.getMonth() &&
+          date.getFullYear() === day.getFullYear()
+        );
+      });
+    });
+
+    return Array.from({ length: weeks }).map((_, weekIndex) => (
+      <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
+        {Array.from({ length: 7 }).map((_, dayIndex) => {
+          const day = days[weekIndex * 7 + dayIndex];
+          return (
+            <td 
+              key={dayIndex}
+              className="text-center py-2 text-xs cursor-pointer"
+              onClick={() => day && setCurrentDate(day)}
+            >
+              {day?.getDate() || ''}
+            </td>
+          );
+        })}
+      </tr>
+    ));
   };
 
   return (
