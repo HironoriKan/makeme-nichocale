@@ -338,6 +338,29 @@ const CalendarTextGenerator = ({
     }
   };
 
+  // クリップボードコピーのフォールバック
+  const fallbackCopyToClipboard = () => {
+    if (typeof document === 'undefined' || !textAreaRef.current) return;
+    
+    try {
+      // テキストエリアの内容を選択してコピー
+      const range = document.createRange();
+      range.selectNodeContents(textAreaRef.current);
+      
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      document.execCommand('copy');
+      selection.removeAllRanges();
+      
+      alert('コピーしました！');
+    } catch (err) {
+      console.error('フォールバックコピーに失敗しました:', err);
+      alert('コピーできませんでした。テキストを手動で選択してコピーしてください。');
+    }
+  };
+
   // Check if time slot is occupied by an event
   const isTimeSlotOccupied = (date, hour) => {
     if (!date || !events || !events.length) return false;
@@ -933,6 +956,13 @@ const CalendarTextGenerator = ({
         )}
       </div>
     );
+  };
+
+  // テキストエリアの内容変更ハンドラ
+  const handleTextAreaChange = (e) => {
+    if (e.currentTarget) {
+      setGeneratedText(e.currentTarget.textContent || '');
+    }
   };
 
   // ビューポートの高さを設定するスクリプトを追加
