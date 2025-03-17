@@ -36,6 +36,9 @@ const CalendarTextGenerator = ({
   const textAreaRef = useRef(null);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const settingsPopupRef = useRef();
+  const [lastSelectedDay, setLastSelectedDay] = useState(-1);
+  const [lastSelectedTime, setLastSelectedTime] = useState(-1);
+  const [isDragToDeselect, setIsDragToDeselect] = useState(false);
 
   // Custom hook for viewport height
   const useViewportHeight = () => {
@@ -186,21 +189,31 @@ const CalendarTextGenerator = ({
   };
 
   const handleCellMouseEnter = (dayIndex, timeIndex) => {
-    if (isDragging && dragOperation !== null) {
-      const date = weekDates[dayIndex];
-      if (!date) return;
-
-      // 予定の有無に関わらず選択可能にする (isTimeSlotOccupiedのチェックを削除)
-      const key = getDateTimeKey(date, timeIndex);
-      const newSelectedDates = new Map(selectedDates);
+    if (!isDragging) return;
+    
+    // 前回の選択状態から変化があるときのみ更新
+    if (lastSelectedDay !== dayIndex || lastSelectedTime !== timeIndex) {
+      const newSelection = [...selectedDates];
+      const dateTimeKey = getDateTimeKey(weekDates[dayIndex], timeIndex);
       
-      if (dragOperation) {
-        newSelectedDates.set(key, true);
+      // 選択解除モードなら削除、そうでなければ追加
+      if (isDragToDeselect) {
+        // 選択解除モードでは選択を解除
+        const index = newSelection.findIndex(item => item === dateTimeKey);
+        if (index !== -1) {
+          newSelection.splice(index, 1);
+        }
       } else {
-        newSelectedDates.delete(key);
+        // 選択モードでは追加（重複チェック）
+        if (!newSelection.includes(dateTimeKey)) {
+          newSelection.push(dateTimeKey);
+        }
       }
       
-      setSelectedDates(newSelectedDates);
+      setSelectedDates(newSelection);
+      setLastSelectedDay(dayIndex);
+      setLastSelectedTime(timeIndex);
+      setGeneratedText(generateText(newSelection));
     }
   };
 
@@ -1381,10 +1394,6 @@ const CalendarTextGenerator = ({
             
             {/* 右側：ログインボタンまたはユーザー情報 */}
             <div className="flex items-center space-x-3">
-              <button onClick={goToToday} className="px-4 py-2 text-sm bg-gray-100 rounded">
-                今日
-              </button>
-              
               {isAuthenticated ? (
                 <div className="flex items-center">
                   {userInfo?.photos?.[0]?.url && (
@@ -1423,13 +1432,17 @@ const CalendarTextGenerator = ({
           <div className="flex flex-row gap-4 overflow-hidden" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
             {/* 左側：カレンダーグリッド */}
             <div className="bg-white rounded-lg shadow-sm p-4 overflow-hidden" style={{ width: 'calc(67% - 8px)', minWidth: '600px', maxWidth: '1000px' }}>
-              <div className="flex justify-between items-center mb-4">
-                <div className="text-xl font-bold">
+              {/* ナビゲーションと日付表示を中央に配置 */}
+              <div className="flex flex-col items-center mb-4">
+                <div className="text-xl font-bold mb-2">
                   {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
                 </div>
                 
                 <div className="flex items-center space-x-4">
                   <button onClick={previousWeek} className="text-gray-600 text-lg">&lt;</button>
+                  <button onClick={goToToday} className="px-4 py-1 text-sm bg-gray-100 rounded">
+                    &lt;今日&gt;
+                  </button>
                   <button onClick={nextWeek} className="text-gray-600 text-lg">&gt;</button>
                   
                   {/* 設定アイコン */}
@@ -1551,10 +1564,10 @@ const CalendarTextGenerator = ({
                 </div>
               )}
 
-              {/* カレンダーのグリッド */}
-              <div className="overflow-auto h-[calc(100%-60px)]" style={{ minHeight: '400px' }}>
+              {/* カレンダーのグリッド - スクロール機能強化 */}
+              <div className="overflow-y-auto h-[calc(100%-80px)]" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 250px)' }}>
                 <table className="w-full border-collapse table-fixed">
-                  <thead>
+                  <thead className="sticky top-0 bg-white z-10">
                     <tr>
                       <th className="w-[60px]"></th>
                       {weekdays.map((weekday, index) => {
@@ -1592,6 +1605,8 @@ const CalendarTextGenerator = ({
                               key={dayIndex}
                               className="p-1 cursor-pointer"
                               onClick={() => handleCellClick(dayIndex, timeIndex)}
+                              onMouseDown={() => handleCellMouseDown(dayIndex, timeIndex)}
+                              onMouseEnter={() => handleCellMouseEnter(dayIndex, timeIndex)}
                               style={{ width: `calc((100% - 60px) / 7)` }}
                             >
                               <div 
