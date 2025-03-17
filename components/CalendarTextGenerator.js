@@ -996,7 +996,7 @@ const CalendarTextGenerator = ({
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
       // グリッドの高さを設定（全体の60%程度）
-      const gridHeight = Math.max(200, availableHeight * 0.3); // 最低200pxを確保
+      const gridHeight = Math.max(200, availableHeight * 0.6); // 縦幅を2倍に変更（0.3→0.6）
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
       
       // コンソールに高さ情報を出力（デバッグ用）
@@ -1373,7 +1373,7 @@ const CalendarTextGenerator = ({
   // デスクトップ用のレイアウト
   const renderDesktopLayout = () => {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-gray-50 p-4 overflow-hidden">
         <div className="max-w-[1500px] mx-auto">
           {/* ヘッダー */}
           <div className="mb-4 flex justify-between items-center">
@@ -1420,9 +1420,9 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* メインコンテンツ */}
-          <div className="flex flex-row gap-4" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
+          <div className="flex flex-row gap-4 overflow-hidden" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
             {/* 左側：カレンダーグリッド */}
-            <div className="bg-white rounded-lg shadow-sm p-4" style={{ width: 'calc(67% - 8px)', minWidth: '600px', maxWidth: '1000px' }}>
+            <div className="bg-white rounded-lg shadow-sm p-4 overflow-hidden" style={{ width: 'calc(67% - 8px)', minWidth: '600px', maxWidth: '1000px' }}>
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xl font-bold">
                   {weekDates.length > 0 ? `${weekDates[0].getFullYear()}年 ${weekDates[0].getMonth() + 1}月` : ''}
@@ -1553,10 +1553,10 @@ const CalendarTextGenerator = ({
 
               {/* カレンダーのグリッド */}
               <div className="overflow-auto h-[calc(100%-60px)]" style={{ minHeight: '400px' }}>
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse table-fixed">
                   <thead>
                     <tr>
-                      <th className="w-20"></th>
+                      <th className="w-[60px]"></th>
                       {weekdays.map((weekday, index) => {
                         const date = weekDates[index];
                         const isToday = date && 
@@ -1565,7 +1565,7 @@ const CalendarTextGenerator = ({
                           date.getFullYear() === today.getFullYear();
                         
                         return (
-                          <th key={index} className="p-2 text-center border-b">
+                          <th key={index} className="p-2 text-center border-b" style={{ width: `calc((100% - 60px) / 7)` }}>
                             <div className="text-sm text-gray-500">{weekday}</div>
                             <div className={`text-lg font-bold ${isToday ? 'bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
                               {date ? date.getDate() : ''}
@@ -1578,7 +1578,7 @@ const CalendarTextGenerator = ({
                   <tbody>
                     {timeSlots.map((time, timeIndex) => (
                       <tr key={timeIndex}>
-                        <td className="p-2 text-sm text-gray-500 text-right">
+                        <td className="p-2 text-sm text-gray-500 text-right w-[60px]">
                           {time}
                         </td>
                         {weekdays.map((_, dayIndex) => {
@@ -1592,9 +1592,10 @@ const CalendarTextGenerator = ({
                               key={dayIndex}
                               className="p-1 cursor-pointer"
                               onClick={() => handleCellClick(dayIndex, timeIndex)}
+                              style={{ width: `calc((100% - 60px) / 7)` }}
                             >
                               <div 
-                                className={`h-8 rounded flex items-center justify-center ${
+                                className={`h-16 rounded flex items-center justify-center ${
                                   isOccupied ? 'bg-gray-200' :
                                   isSelected ? 'bg-red-300' : 'bg-red-50'
                                 }`}
@@ -1622,7 +1623,7 @@ const CalendarTextGenerator = ({
             </div>
 
             {/* 右側：ミニカレンダーと日程候補 */}
-            <div style={{ width: 'calc(33% - 8px)', minWidth: '300px', maxWidth: '500px' }} className="flex flex-col gap-4">
+            <div style={{ width: 'calc(33% - 8px)', minWidth: '300px', maxWidth: '500px' }} className="flex flex-col gap-4 overflow-hidden">
               {/* 右上：ミニカレンダー */}
               <div className="bg-white rounded-lg p-4 shadow-sm">
                 <h2 className="text-lg font-bold mb-2">カレンダー</h2>
@@ -1649,7 +1650,7 @@ const CalendarTextGenerator = ({
               </div>
 
               {/* 右下：日程候補の出力 */}
-              <div className="bg-white rounded-lg p-4 shadow-sm flex-1">
+              <div className="bg-white rounded-lg p-4 shadow-sm flex-1 overflow-hidden">
                 <h2 className="text-lg font-bold mb-2">日程候補の作成</h2>
                 <p className="text-sm text-gray-600 mb-4">カレンダーで選んだ日時を出力します。</p>
                 <div 
@@ -2030,11 +2031,11 @@ const CalendarTextGenerator = ({
       
       {/* フッター */}
       <div className="footer-area w-full bg-gray-100 border-t border-gray-200 py-3 mt-auto">
-        <div className="max-w-lg mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
-          <div className="text-xs text-gray-500 mb-2 sm:mb-0">
+        <div className="max-w-[1500px] mx-auto px-4 flex flex-row justify-between items-center">
+          <div className="text-xs text-gray-500">
             © 2024 メイクミー日程調整 All Rights Reserved.
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-6">
             <a href="#" className="text-xs text-gray-500">利用規約</a>
             <a href="#" className="text-xs text-gray-500">プライバシーポリシー</a>
             <a href="#" className="text-xs text-gray-500">お問い合わせ</a>
