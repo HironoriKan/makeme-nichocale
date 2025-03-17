@@ -18,21 +18,22 @@ const CalendarTextGenerator = ({
 }) => {
   const weekdays = ['月', '火', '水', '木', '金', '土', '日'];
   const timeSlots = Array.from({ length: 14 }, (_, i) => `${i + 8}:00`);
-  const [selectedDates, setSelectedDates] = useState(new Map());
+  const [selectedDates, setSelectedDates] = useState([]);
   const [generatedText, setGeneratedText] = useState('');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [weekDates, setWeekDates] = useState([]);
   const [todayIndex, setTodayIndex] = useState(-1);
   const today = new Date();
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOperation, setDragOperation] = useState(null);
-  const [longPressTimer, setLongPressTimer] = useState(null);
-  const [isLongPress, setIsLongPress] = useState(false);
+  const [dragMode, setDragMode] = useState(null); // 'select' または 'deselect'
+  const [visitedCells, setVisitedCells] = useState({});
+  const [touchStartCell, setTouchStartCell] = useState(null);
+  const [isTextAreaFocused, setIsTextAreaFocused] = useState(false);
+  const [currentTouch, setCurrentTouch] = useState(null);
   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
   const [popupMonth, setPopupMonth] = useState(new Date());
   const popupRef = useRef();
   const [currentTimePosition, setCurrentTimePosition] = useState(0);
-  const [isTextAreaFocused, setIsTextAreaFocused] = useState(false);
   const textAreaRef = useRef(null);
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const settingsPopupRef = useRef();
@@ -170,7 +171,9 @@ const CalendarTextGenerator = ({
   const handleCellMouseDown = (dayIndex, timeIndex, e) => {
     // デフォルトの選択動作を防止
     e.preventDefault();
-    window.getSelection().removeAllRanges();
+    if (window.getSelection) {
+      window.getSelection().removeAllRanges();
+    }
     
     const date = weekDates[dayIndex];
     if (!date) return;
@@ -195,7 +198,7 @@ const CalendarTextGenerator = ({
     if (!isDragging) return;
     
     // 同じセルの場合は処理しない（パフォーマンス向上）
-    if (lastDraggedCell.dayIndex === dayIndex && lastDraggedCell.timeIndex === timeIndex) {
+    if (lastDraggedCell && lastDraggedCell.dayIndex === dayIndex && lastDraggedCell.timeIndex === timeIndex) {
       return;
     }
     
@@ -228,21 +231,11 @@ const CalendarTextGenerator = ({
   };
 
   const handleMouseUp = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-    
     if (isDragging) {
       setIsDragging(false);
-      setDragOperation(null);
-      
-      setTimeout(() => {
-        setIsLongPress(false);
-      }, 50);
-      
-      // デバッグ出力（問題診断用）
-      console.log('Drag ended', { selections: selectedDates.length });
+      // テキスト生成を確定
+      generateText(selectedDates);
+      console.log('Drag ended');
     }
   };
 
@@ -1342,7 +1335,7 @@ const CalendarTextGenerator = ({
         </div>
         
         {/* ⑤テキスト反映エリア（内部スクロール） */}
-        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '130px' }}>
+        <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '110px' }}>
           <div className="bg-white h-full overflow-auto">
             <div
               className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[90px]"
@@ -1407,6 +1400,9 @@ const CalendarTextGenerator = ({
             </button>
           </div>
         </div>
+        
+        {/* ⑦下部スペース */}
+        <div className="footer-area flex-shrink-0 h-[20px]"></div>
       </div>
     );
   };
@@ -1429,11 +1425,12 @@ const CalendarTextGenerator = ({
       const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
       const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
       const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = 130; // テキストエリアの固定高さ
+      const textAreaHeight = 110; // テキストエリアの高さを縮小
       const buttonAreaHeight = 60; // ボタンエリアの固定高さ
+      const footerHeight = 20; // 追加した下部スペース
       
       // 固定要素の合計高さ
-      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight;
+      const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
       
       // 利用可能な高さから固定要素の高さを引いてグリッドの高さを計算
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
@@ -1548,7 +1545,7 @@ const CalendarTextGenerator = ({
       const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
       const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
       const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = 130; // テキストエリアの固定高さ
+      const textAreaHeight = 110; // テキストエリアの高さを縮小
       const buttonAreaHeight = 60; // ボタンエリアの固定高さ
       
       // 固定要素の合計高さ
@@ -1910,6 +1907,8 @@ const CalendarTextGenerator = ({
 
   // ミニカレンダーの本体部分をレンダリングする関数
   const renderMiniCalendarBody = () => {
+    if (!currentDate) return null;
+    
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -1934,8 +1933,8 @@ const CalendarTextGenerator = ({
     const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
       return Array.from({ length: 7 }).some((_, dayIndex) => {
         const day = days[weekIndex * 7 + dayIndex];
-        return day && weekDates.some(date => 
-          date.getDate() === day.getDate() &&
+        return day && weekDates && weekDates.some(date => 
+          date && day && date.getDate() === day.getDate() &&
           date.getMonth() === day.getMonth() &&
           date.getFullYear() === day.getFullYear()
         );
@@ -2240,7 +2239,7 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* ⑤テキスト反映エリア（内部スクロール） */}
-          <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '130px' }}>
+          <div className="text-area flex-shrink-0 bg-white border-t border-gray-200 overflow-auto" style={{ height: '110px' }}>
             <div className="bg-white h-full overflow-auto">
               <div
                 className="w-full p-2 sm:p-3 text-gray-700 rounded-md min-h-[90px]"
@@ -2305,6 +2304,9 @@ const CalendarTextGenerator = ({
               </button>
             </div>
           </div>
+          
+          {/* ⑦下部スペース */}
+          <div className="footer-area flex-shrink-0 h-[20px]"></div>
         </div>
       </div>
       
