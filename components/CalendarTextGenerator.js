@@ -1012,13 +1012,13 @@ const CalendarTextGenerator = ({
   }, []);
 
   return (
-    <div className="flex justify-center bg-gray-50 w-full h-screen" style={{ 
-      height: 'calc(100vh - var(--safe-bottom, 0px))', 
+    <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
+      minHeight: 'calc(100vh - var(--safe-bottom, 0px))', 
       overscrollBehavior: 'none',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      <div className="relative flex flex-col w-full sm:max-w-lg max-h-full h-full" style={{maxWidth: '100%'}}>
+      <div className="relative flex flex-col w-full sm:max-w-lg h-full" style={{maxWidth: '100%'}}>
         {/* ①画面のヘッダー：高さ固定 */}
         <div className="app-header bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
           style={{ height: 'auto', minHeight: '48px' }}>
@@ -1279,6 +1279,20 @@ const CalendarTextGenerator = ({
             >
               文字をコピー
             </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* フッター */}
+      <div className="w-full bg-gray-100 border-t border-gray-200 py-3 mt-auto">
+        <div className="max-w-lg mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
+          <div className="text-xs text-gray-500 mb-2 sm:mb-0">
+            © 2024 メイクミー日程調整 All Rights Reserved.
+          </div>
+          <div className="flex space-x-4">
+            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">利用規約</a>
+            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">プライバシーポリシー</a>
+            <a href="#" className="text-xs text-gray-500 hover:text-gray-700">お問い合わせ</a>
           </div>
         </div>
       </div>
