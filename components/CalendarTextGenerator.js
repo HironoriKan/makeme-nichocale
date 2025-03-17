@@ -975,27 +975,48 @@ const CalendarTextGenerator = ({
   useEffect(() => {
     if (typeof document === 'undefined') return;
     
+    // ポップアップ外のクリックを処理する関数
     const handleClickOutside = (event) => {
+      // 直接の親要素（設定ボタン）をクリックした場合は無視
+      // これにより、ボタンクリックでの開閉が正常に動作する
+      const settingsButton = document.querySelector('.settings-button');
+      if (settingsButton && settingsButton.contains(event.target)) {
+        return;
+      }
+      
+      // ポップアップ内のクリックでなければ閉じる
       if (settingsPopupRef.current && !settingsPopupRef.current.contains(event.target)) {
         setShowSettingsPopup(false);
       }
     };
-
-    // mousedownではなくmouseupイベントを使用
-    document.addEventListener('mouseup', handleClickOutside);
     
-    // タッチデバイス用
-    document.addEventListener('touchend', handleClickOutside);
+    // ポップアップが表示されている場合のみイベントリスナーを追加
+    if (showSettingsPopup) {
+      // タイミングを遅らせてイベントリスナーを追加（即座の誤クリックを防止）
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }
     
-    return () => {
-      document.removeEventListener('mouseup', handleClickOutside);
-      document.removeEventListener('touchend', handleClickOutside);
-    };
-  }, [settingsPopupRef]);
+    return () => {};
+  }, [settingsPopupRef, showSettingsPopup]);
 
   // Settings popup rendering
   const renderSettingsPopup = () => {
     if (!showSettingsPopup || !isAuthenticated) return null;
+    
+    // ポップアップ内のクリックイベントを完全に阻止
+    const preventPopupClose = (e) => {
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+    };
     
     return (
       <div 
@@ -1007,7 +1028,9 @@ const CalendarTextGenerator = ({
           maxHeight: '540px',
           overflowY: 'auto'
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={preventPopupClose}
+        onTouchStart={preventPopupClose}
+        onMouseDown={preventPopupClose}
       >
         <div className="font-bold mb-2 pb-2 border-b border-gray-200">カレンダー設定</div>
         
@@ -1017,7 +1040,7 @@ const CalendarTextGenerator = ({
         <div className="flex justify-end mb-2">
           <button
             onClick={(e) => {
-              e.stopPropagation();
+              preventPopupClose(e);
               calendars.forEach(calendar => {
                 if (calendar.selected) {
                   toggleCalendarSelection(calendar.id);
@@ -1032,17 +1055,16 @@ const CalendarTextGenerator = ({
         
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {calendars.map(calendar => (
-            <div key={calendar.id} className="flex items-center">
+            <div key={calendar.id} className="flex items-center" onClick={preventPopupClose}>
               <input
                 type="checkbox"
                 id={`calendar-${calendar.id}`}
                 checked={calendar.selected}
                 onChange={(e) => {
-                  e.stopPropagation();
+                  preventPopupClose(e);
                   toggleCalendarSelection(calendar.id);
                 }}
                 className="mr-2"
-                onClick={(e) => e.stopPropagation()}
               />
               <div 
                 className="w-3 h-3 rounded-full mr-2" 
@@ -1052,7 +1074,6 @@ const CalendarTextGenerator = ({
                 htmlFor={`calendar-${calendar.id}`}
                 className="text-sm text-gray-800 truncate"
                 style={{ maxWidth: '200px' }}
-                onClick={(e) => e.stopPropagation()}
               >
                 {calendar.name}
               </label>
@@ -1071,37 +1092,35 @@ const CalendarTextGenerator = ({
           <div className="font-bold text-sm mb-2">予定の表示設定</div>
           
           {/* 終日予定の設定 */}
-          <div className="flex items-center my-3">
+          <div className="flex items-center my-3" onClick={preventPopupClose}>
             <input
               type="checkbox"
               id="allow-all-day-events"
               checked={calendarSettings.allowAllDayEvents}
               onChange={(e) => {
-                e.stopPropagation();
+                preventPopupClose(e);
                 updateCalendarSettings('allowAllDayEvents', e.target.checked);
               }}
               className="mr-2"
-              onClick={(e) => e.stopPropagation()}
             />
-            <label htmlFor="allow-all-day-events" className="text-sm text-gray-800" onClick={(e) => e.stopPropagation()}>
+            <label htmlFor="allow-all-day-events" className="text-sm text-gray-800">
               終日予定がある日を表示しない
             </label>
           </div>
           
           {/* 未回答予定の設定 */}
-          <div className="flex items-center my-3">
+          <div className="flex items-center my-3" onClick={preventPopupClose}>
             <input
               type="checkbox"
               id="allow-tentative-events"
               checked={calendarSettings.allowTentativeEvents}
               onChange={(e) => {
-                e.stopPropagation();
+                preventPopupClose(e);
                 updateCalendarSettings('allowTentativeEvents', e.target.checked);
               }}
               className="mr-2"
-              onClick={(e) => e.stopPropagation()}
             />
-            <label htmlFor="allow-tentative-events" className="text-sm text-gray-800" onClick={(e) => e.stopPropagation()}>
+            <label htmlFor="allow-tentative-events" className="text-sm text-gray-800">
               未回答/未定の予定がある時間を表示しない
             </label>
           </div>
@@ -1570,12 +1589,10 @@ const CalendarTextGenerator = ({
                   {isAuthenticated && (
                     <button
                       onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                      className="flex items-center justify-center text-gray-600"
-                      title="カレンダー設定"
+                      className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                       </svg>
                     </button>
                   )}
@@ -2005,12 +2022,10 @@ const CalendarTextGenerator = ({
               {isAuthenticated && (
                 <button
                   onClick={() => setShowSettingsPopup(!showSettingsPopup)}
-                  className="flex items-center justify-center rounded-full text-gray-600 w-10 h-10 focus:outline-none"
-                  title="カレンダー設定"
+                  className="settings-button ml-2 p-2 text-gray-600 hover:text-gray-800 focus:outline-none"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                   </svg>
                 </button>
               )}
