@@ -1220,7 +1220,7 @@ const CalendarTextGenerator = ({
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
             )}
@@ -1402,7 +1402,7 @@ const CalendarTextGenerator = ({
         </div>
         
         {/* ⑦下部スペース */}
-        <div className="footer-area flex-shrink-0 h-[20px]"></div>
+        <div className="footer-space flex-shrink-0 h-[20px]"></div>
       </div>
     );
   };
@@ -1425,9 +1425,11 @@ const CalendarTextGenerator = ({
       const headerHeight = document.querySelector('.app-header')?.offsetHeight || 48;
       const navHeight = document.querySelector('.nav-header')?.offsetHeight || 48;
       const calendarHeaderHeight = document.querySelector('.calendar-header')?.offsetHeight || 50;
-      const textAreaHeight = 110; // テキストエリアの高さを縮小
-      const buttonAreaHeight = 60; // ボタンエリアの固定高さ
-      const footerHeight = 20; // 追加した下部スペース
+      
+      // テキストエリアと下部領域の固定高さを使用
+      const textAreaHeight = 110; // 修正：固定値を使用
+      const buttonAreaHeight = 60;
+      const footerHeight = 20;
       
       // 固定要素の合計高さ
       const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
@@ -1436,8 +1438,6 @@ const CalendarTextGenerator = ({
       const availableHeight = window.innerHeight - fixedHeight - (parseInt(document.documentElement.style.getPropertyValue('--safe-bottom') || '0', 10));
       
       // グリッドの高さを設定（8:00〜17:00程度が表示される高さ = 9時間分）
-      // 各セルの高さを約37px（1時間あたり）と仮定すると、9時間で約333px
-      // 安全マージンを含めて340px程度に設定
       const gridHeight = Math.max(300, Math.min(availableHeight, 340));
       document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
     };
@@ -2124,7 +2124,7 @@ const CalendarTextGenerator = ({
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
               )}
@@ -2306,7 +2306,7 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* ⑦下部スペース */}
-          <div className="footer-area flex-shrink-0 h-[20px]"></div>
+          <div className="footer-space flex-shrink-0 h-[20px]"></div>
         </div>
       </div>
       
