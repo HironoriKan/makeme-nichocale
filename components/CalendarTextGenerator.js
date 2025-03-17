@@ -1012,13 +1012,85 @@ const CalendarTextGenerator = ({
     };
   }, []);
 
-  return (
-    <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
-      minHeight: 'calc(100vh - var(--safe-bottom, 0px))', 
-      overscrollBehavior: 'none',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
+  // ミニカレンダーをレンダリング
+  const renderMiniCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    let firstDayOfWeek = firstDay.getDay();
+    firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    
+    const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+    const days = [];
+    
+    for (let i = 0; i < weeks * 7; i++) {
+      const dayNumber = i - firstDayOfWeek + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) {
+        days.push(null);
+      } else {
+        days.push(new Date(year, month, dayNumber));
+      }
+    }
+
+    const selectedWeekIndex = Array.from({ length: weeks }).findIndex((_, weekIndex) => {
+      return Array.from({ length: 7 }).some((_, dayIndex) => {
+        const day = days[weekIndex * 7 + dayIndex];
+        return day && weekDates.some(date => 
+          date.getDate() === day.getDate() &&
+          date.getMonth() === day.getMonth() &&
+          date.getFullYear() === day.getFullYear()
+        );
+      });
+    });
+
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold mb-2">カレンダー</h2>
+          <p className="text-sm text-gray-600">選択した週間カレンダーを表示します。</p>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <button onClick={previousWeek} className="text-gray-600">&lt;</button>
+          <span className="font-bold">{`${year}年 ${month + 1}月`}</span>
+          <button onClick={nextWeek} className="text-gray-600">&gt;</button>
+        </div>
+        <table className="w-full">
+          <thead>
+            <tr>
+              {weekdays.map(day => (
+                <th key={day} className="text-center py-2 text-sm">{day}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: weeks }).map((_, weekIndex) => (
+              <tr key={weekIndex} className={weekIndex === selectedWeekIndex ? 'bg-red-100' : ''}>
+                {Array.from({ length: 7 }).map((_, dayIndex) => {
+                  const day = days[weekIndex * 7 + dayIndex];
+                  return (
+                    <td 
+                      key={dayIndex}
+                      className="text-center py-2 text-sm cursor-pointer"
+                      onClick={() => day && setCurrentDate(day)}
+                    >
+                      {day?.getDate() || ''}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // モバイル用のレイアウト
+  const renderMobileLayout = () => {
+    return (
       <div className="relative flex flex-col w-full sm:max-w-lg h-full" style={{maxWidth: '100%'}}>
         {/* ①画面のヘッダー：高さ固定 */}
         <div className="app-header bg-white p-1 sm:p-2 flex justify-between items-center shadow-sm border-b border-gray-200 flex-shrink-0" 
@@ -1282,6 +1354,139 @@ const CalendarTextGenerator = ({
             </button>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // デスクトップ用のレイアウト
+  const renderDesktopLayout = () => {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-[1200px] mx-auto">
+          <h1 className="text-2xl font-bold mb-6">カレンダー日程調整</h1>
+          
+          <div className="grid grid-cols-[1fr_300px] gap-4">
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-xl font-bold">
+                  {weekDates[0]?.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={goToToday} className="px-4 py-2 text-sm bg-gray-100 rounded">
+                    今日
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="w-20"></th>
+                      {weekDates.map((date, index) => (
+                        <th key={index} className="p-2 text-center border-b">
+                          <div className="text-sm text-gray-500">{weekdays[index]}</div>
+                          <div className={`text-lg font-bold ${
+                            date.toDateString() === today.toDateString() ? 'text-red-500' : ''
+                          }`}>
+                            {date.getDate()}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timeSlots.map((time, timeIndex) => (
+                      <tr key={timeIndex}>
+                        <td className="p-2 text-sm text-gray-500 text-right">
+                          {time}
+                        </td>
+                        {weekdays.map((_, dayIndex) => {
+                          const date = weekDates[dayIndex];
+                          const event = date && getEventForTimeSlot(date, timeIndex + 8);
+                          const isOccupied = !!event;
+                          const isSelected = getSelectedSlots()[dayIndex][timeIndex];
+                          
+                          return (
+                            <td
+                              key={dayIndex}
+                              className="p-1 cursor-pointer"
+                              onClick={() => handleCellClick(dayIndex, timeIndex)}
+                            >
+                              <div className={`h-10 rounded ${
+                                isOccupied ? getEventColor(event) : 
+                                isSelected ? 'bg-red-200' : 'bg-red-50'
+                              }`}>
+                                {isOccupied && (
+                                  <div className="text-xs text-white p-1 overflow-hidden">
+                                    {formatEventTitle(event)}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {renderMiniCalendar()}
+
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h2 className="text-lg font-bold mb-2">日程候補の作成</h2>
+                <p className="text-sm text-gray-600 mb-4">カレンダーで選んだ日時を出力します。</p>
+                <div 
+                  className="bg-gray-50 p-3 rounded min-h-[100px] mb-4 text-sm whitespace-pre-wrap"
+                  ref={textAreaRef}
+                  contentEditable={true}
+                  onFocus={() => setIsTextAreaFocused(true)}
+                  onBlur={() => setIsTextAreaFocused(false)}
+                  onInput={handleTextAreaChange}
+                >
+                  {generatedText || '日時が選択されていません'}
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={copyToClipboard}
+                    disabled={!generatedText}
+                    className="w-full py-2 bg-red-400 text-white rounded-full font-bold disabled:opacity-50"
+                  >
+                    文字をコピーする
+                  </button>
+                  <button
+                    onClick={resetSelection}
+                    className="w-full py-2 bg-gray-200 text-gray-700 rounded-full font-bold"
+                  >
+                    リセット
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col justify-center bg-gray-50 w-full min-h-screen" style={{ 
+      minHeight: 'calc(100vh - var(--safe-bottom, 0px))', 
+      overscrollBehavior: 'none',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* モバイル表示（750px未満） */}
+      <div className="md:hidden">
+        {renderMobileLayout()}
+      </div>
+      
+      {/* デスクトップ表示（750px以上） */}
+      <div className="hidden md:block">
+        {renderDesktopLayout()}
       </div>
       
       {/* フッター */}
