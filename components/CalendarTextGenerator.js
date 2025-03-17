@@ -1193,26 +1193,28 @@ const CalendarTextGenerator = ({
         // 合計固定高さ
         const fixedHeight = headerHeight + navHeight + calendarHeaderHeight + textAreaHeight + buttonAreaHeight + footerHeight;
         
-        // 利用可能な高さからグリッドの高さを計算
+        // 利用可能な高さを計算
         const availableHeight = window.innerHeight - fixedHeight;
         
         // 画面幅からグリッドの幅を計算（左右のマージンを考慮）
         const screenWidth = window.innerWidth;
         const timeColumnWidth = 40; // 時間列の幅
         const availableWidth = screenWidth - timeColumnWidth - 16; // 左右の余白を考慮
-        const cellWidth = availableWidth / 7; // 7日分で割る
         
-        // グリッドの高さを計算する
-        // セルの高さを2倍にするために、基準となる幅を2倍する
-        const gridHeight = Math.min(availableHeight, cellWidth * 14 * 2); // 14時間分 × 高さ2倍
+        // セルの幅を計算（7日分で割る）
+        const cellWidth = Math.floor(availableWidth / 7);
+        
+        // 正方形のセルにするため、高さ＝幅に設定
+        const cellHeight = cellWidth;
+        
+        // グリッドの表示高さ（スクロールコンテナの高さ）を設定
+        // 利用可能な高さの範囲内で、かつ少なくとも3つのセルが見えるようにする
+        const gridContainerHeight = Math.min(availableHeight, Math.max(cellHeight * 3, availableHeight));
         
         // グリッドの高さをCSSカスタムプロパティに設定
-        document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
-        
-        // セルの高さを設定（グリッドの高さを14時間分で割る）
-        // 高さは2倍になるため、各セルの高さも約2倍になる
-        const cellHeight = gridHeight / 14;
+        document.documentElement.style.setProperty('--grid-container-height', `${gridContainerHeight}px`);
         document.documentElement.style.setProperty('--cell-height', `${cellHeight}px`);
+        document.documentElement.style.setProperty('--cell-width', `${cellWidth}px`);
       } catch (error) {
         console.error('Error adjusting heights:', error);
       }
@@ -2012,7 +2014,11 @@ const CalendarTextGenerator = ({
           </div>
           
           {/* ④カレンダーグリッド（内部スクロール、8:00-17:00までを表示し、それ以降はスクロールで見れる） */}
-          <div className="calendar-grid overflow-auto flex-1" style={{ height: 'var(--grid-height, 340px)', maxHeight: '340px' }}>
+          <div className="calendar-grid overflow-auto" style={{ 
+            height: 'var(--grid-container-height, 340px)',
+            maxHeight: 'var(--grid-container-height, 340px)',
+            position: 'relative'
+          }}>
             <div className="relative">
               {/* Current time indicator */}
               {currentTimePosition >= 0 && (
@@ -2060,7 +2066,10 @@ const CalendarTextGenerator = ({
                             className="relative p-0 border-white select-none cursor-pointer"
                             style={{ 
                               height: 'var(--cell-height, 24px)',
-                              padding: '3px'
+                              width: 'var(--cell-width, 24px)',
+                              padding: '3px',
+                              minWidth: 'var(--cell-width, 24px)',
+                              maxWidth: 'var(--cell-width, 24px)'
                             }}
                             onClick={(e) => {
                               // クリックのみの場合の処理（ドラッグ終了時のクリックは無視）
@@ -2077,7 +2086,7 @@ const CalendarTextGenerator = ({
                             data-day-index={dayIndex}
                             data-time-index={timeIndex}
                           >
-                            <div className="flex justify-center items-center h-full">
+                            <div className="flex justify-center items-center h-full w-full">
                               {renderEventCell(event, isOccupied, isSelected)}
                             </div>
                           </td>
