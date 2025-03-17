@@ -1202,13 +1202,15 @@ const CalendarTextGenerator = ({
         const availableWidth = screenWidth - timeColumnWidth - 16; // 左右の余白を考慮
         const cellWidth = availableWidth / 7; // 7日分で割る
         
-        // グリッドの高さを幅に合わせて1:1に設定
-        const gridHeight = Math.min(availableHeight, cellWidth * 14); // 14時間分
+        // グリッドの高さを計算する
+        // セルの高さを2倍にするために、基準となる幅を2倍する
+        const gridHeight = Math.min(availableHeight, cellWidth * 14 * 2); // 14時間分 × 高さ2倍
         
         // グリッドの高さをCSSカスタムプロパティに設定
         document.documentElement.style.setProperty('--grid-height', `${gridHeight}px`);
         
         // セルの高さを設定（グリッドの高さを14時間分で割る）
+        // 高さは2倍になるため、各セルの高さも約2倍になる
         const cellHeight = gridHeight / 14;
         document.documentElement.style.setProperty('--cell-height', `${cellHeight}px`);
       } catch (error) {
