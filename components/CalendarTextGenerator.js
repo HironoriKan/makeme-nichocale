@@ -309,21 +309,33 @@ const CalendarTextGenerator = ({
     setGeneratedText('');
   };
 
-  const copyToClipboard = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(generatedText)
-        .then(() => {
-          alert('テキストをコピーしました');
-        })
-        .catch(err => {
-          console.error('コピーに失敗しました', err);
-        });
-    }
-  };
-
+  // モバイルデバイスかどうかを判定
   const isMobileDevice = () => {
     if (typeof navigator === 'undefined') return false;
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
+  // テキストをクリップボードにコピー
+  const copyToClipboard = () => {
+    if (!generatedText) return;
+    
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(generatedText)
+          .then(() => {
+            alert('コピーしました！');
+          })
+          .catch(err => {
+            console.error('クリップボードへのコピーに失敗しました:', err);
+            fallbackCopyToClipboard();
+          });
+      } else {
+        fallbackCopyToClipboard();
+      }
+    } catch (err) {
+      console.error('クリップボードへのコピーに失敗しました:', err);
+      fallbackCopyToClipboard();
+    }
   };
 
   // Check if time slot is occupied by an event
@@ -687,21 +699,13 @@ const CalendarTextGenerator = ({
   const handleTextAreaFocus = () => {
     setIsTextAreaFocused(true);
     
-    if (textAreaRef.current && typeof window !== 'undefined') {
-      const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const delay = isIOS ? 500 : 300;
-      
+    // iOSの場合、フォーカス時にスクロールを調整
+    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isIOS && typeof window !== 'undefined') {
       setTimeout(() => {
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth'
-        });
-        
-        textAreaRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
-      }, delay);
+        window.scrollTo(0, 0);
+      }, 100);
     }
   };
 
@@ -937,8 +941,8 @@ const CalendarTextGenerator = ({
       const vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
       
-      // iPhoneの場合は安全マージンを追加
-      if (/iPhone/.test(navigator.userAgent)) {
+      // iPhoneの場合は安全マージンを追加（クライアントサイドでのみ実行）
+      if (typeof navigator !== 'undefined' && /iPhone/.test(navigator.userAgent)) {
         document.documentElement.style.setProperty('--safe-bottom', '20px');
       } else {
         document.documentElement.style.setProperty('--safe-bottom', '0px');
